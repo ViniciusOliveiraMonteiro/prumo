@@ -1,0 +1,10 @@
+# Arquivos locais e credenciais
+.env
+.env.*
+!.env.example
+*.log
+*Zone.Identifier
+/*.pdf
+
+# Dependências locais de projetos Node
+node_modules/
