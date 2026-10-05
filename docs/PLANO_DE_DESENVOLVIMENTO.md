@@ -27,6 +27,7 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 - **Sprint 1 em estudo:** exemplos reproduzíveis de transferência, saldo inicial, compra/pagamento de cartão, parcelas, reembolso e estorno em `docs/domain/financial-examples.md`. A regra principal de competência da compra no cartão foi aprovada; rateio, ajustes e casos detalhados ainda são pendências.
 - **Decisões aprovadas:** BRL em centavos inteiros com moeda explícita (ADR-006); saldo inicial datado e posterior derivado (ADR-016); compra de consumo integralmente no mês da compra, com parcelas/caixa em visão separada (ADR-008). Alternativas e pendências estão em `docs/domain/model-proposals.md`.
 - **Glossário inicial:** conceitos centrais e limites ainda pendentes em `docs/domain/glossary.md`.
+- **ADR-007 em discussão:** alternativas para `Transaction` e transferência em `docs/domain/transaction-model-proposal.md`; a recomendação de evento com movimentos vinculados ainda não foi aprovada.
 
 ## Sprint 0 — Ambiente e organização
 
@@ -57,7 +58,7 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 **Outro artefato em estudo:** glossário inicial em `docs/domain/glossary.md`, sem fechar a estrutura de `Transaction` ou as regras de competência ainda pendentes.
 
-**Próxima ação da Sprint 1:** definir a estrutura de `Transaction` e transferência (ADR-007), aprofundar regras de fatura e reconciliação, preparar casos de uso e threat model inicial; não implementar essas áreas antes das decisões correspondentes.
+**Próxima ação da Sprint 1:** revisar `docs/domain/transaction-model-proposal.md` e escolher a estrutura de `Transaction`/transferência para a ADR-007; depois aprofundar regras de fatura e reconciliação, preparar casos de uso e threat model inicial.
 
 ## Sprint 2 — Arquitetura e escolhas tecnológicas
 
@@ -125,4 +126,4 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 ## Próxima ação
 
-Na Sprint 1, avançar para ADR-007 de `Transaction`/transferência, esboço de Household/Transaction, casos de uso e threat model inicial. Tratar rateio, orçamento mensal, detalhes de fatura e reconciliação como pendências. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.
+Na Sprint 1, revisar a recomendação de `Transaction`/transferência em `docs/domain/transaction-model-proposal.md` e registrar a ADR-007 após escolha; preparar esboço de Household/Transaction, casos de uso e threat model inicial. Tratar rateio, orçamento mensal, detalhes de fatura e reconciliação como pendências. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.
