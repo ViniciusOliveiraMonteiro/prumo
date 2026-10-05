@@ -129,6 +129,9 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Banco | HIPÓTESE | PostgreSQL. |
 | ORM | NÃO DEFINIDO | Prisma é candidato; avaliar Drizzle/TypeORM se houver motivo. |
 | Monorepo | DEFINIDO | Um repositório na pasta pai, com `prumo-web/` e `prumo-api/`; ver ADR-001. |
+| Money no MVP | DEFINIDO | BRL em centavos inteiros com moeda explícita, sem conversão cambial; ver ADR-006. |
+| Saldo de conta | DEFINIDO para o núcleo | Marco inicial datado e saldo posterior derivado; reconciliação mostra diferenças; ver ADR-016. |
+| Cartão no relatório principal | DEFINIDO para compras de consumo | Despesa integral na data da compra; fatura, parcelas e caixa em visão separada; ver ADR-008. |
 | Cache | NÃO DEFINIDO | Redis apenas quando existir caso real. |
 | Jobs | HIPÓTESE | BullMQ + Redis para imports, recalculações e tarefas assíncronas. |
 | Event streaming | NÃO DEFINIDO | Kafka não entra inicialmente; avaliar somente mediante lacuna concreta. |
@@ -386,20 +389,11 @@ Transferir R$ 1.000 da conta corrente para uma conta de investimento não signif
 
 ## BR-002 - Pagamento de fatura não duplica despesa
 
-Se as compras do cartão já foram contabilizadas, o pagamento da fatura representa liquidação de passivo/transferência, não nova despesa.
+Para compras de consumo, o relatório principal reconhece a despesa integral na data da compra (ADR-008). O pagamento da fatura representa redução de caixa e passivo, não nova despesa dessas compras. Parcelas e fluxo de caixa são visões separadas.
 
 ## BR-003 - Valores monetários não usam ponto flutuante binário
 
-Persistir dinheiro em tipo decimal apropriado ou unidade inteira mínima conforme decisão do modelo.
-
-**Status: NÃO DEFINIDO** entre `numeric/decimal` e representação inteira em centavos na camada de domínio.
-
-Perguntas:
-
-- Precisamos suportar múltiplas moedas no MVP?
-- Caso sim, valores monetários precisam sempre carregar moeda.
-
-Sugestão: mesmo começando apenas com BRL, modelar `currency` explicitamente pode reduzir retrabalho futuro.
+**DEFINIDO para o MVP:** valores monetários finais de conta, cartão e orçamento usam inteiros em centavos de BRL e carregam `currency = BRL` (ADR-006). Conversão entre moedas fica fora do MVP; cálculos intermediários com frações de centavo exigem precisão decimal exata e quantização documentada. Tipo SQL, limite máximo, formato da API e algoritmo de rateio ainda serão definidos. Ponto flutuante binário não representa dinheiro no domínio.
 
 ## BR-004 - Categoria é dado de negócio
 
@@ -450,8 +444,10 @@ Dados mínimos propostos:
 - tipo;
 - instituição opcional;
 - moeda;
-- saldo inicial ou data de início;
+- saldo inicial e data de início;
 - visibilidade/estado.
+
+**DEFINIDO para saldo:** usar marco inicial datado e derivar os saldos seguintes dos movimentos conhecidos; reconciliação mostra diferenças sem ajuste automático (ADR-016). Estrutura de persistência permanece pendente.
 
 ## UC-003 - Registrar transação manual
 
@@ -618,7 +614,9 @@ Precisamos modelar:
 - fatura;
 - pagamento.
 
-**Status: NÃO DEFINIDO** para nível de fidelidade da fatura no MVP.
+**DEFINIDO para reconhecimento:** compra de consumo entra integralmente no relatório principal na data da compra; parcelas/faturas são compromissos e saídas de caixa em visão separada, sem duplicar despesa (ADR-008).
+
+**Status: NÃO DEFINIDO** para nível de fidelidade da fatura no MVP, incluindo ciclo, pagamento parcial, juros, tarifas e estornos após pagamento.
 
 Sugestão: primeira versão suporta compras e parcelamentos, sem tentar replicar integralmente toda semântica de um emissor bancário.
 
@@ -2226,9 +2224,9 @@ ADR-002 Frontend framework
 ADR-003 Backend framework
 ADR-004 ORM
 ADR-005 Authentication
-ADR-006 Money representation
+ADR-006 Money representation (aceito)
 ADR-007 Transaction model
-ADR-008 Credit card/installment model
+ADR-008 Credit card/installment recognition (aceito para a regra de reconhecimento; detalhes do modelo pendentes)
 ADR-009 Async jobs
 ADR-010 Event publishing/outbox
 ADR-011 Redis usage
@@ -2236,6 +2234,7 @@ ADR-012 Observability stack
 ADR-013 Cloud/deployment strategy
 ADR-014 AI provider and data minimization
 ADR-015 Household isolation/RLS
+ADR-016 Opening balance and reconciliation (aceito para o núcleo; detalhes dos ajustes pendentes)
 ```
 
 Kafka só merece ADR quando houver problema para avaliar.
@@ -2943,17 +2942,17 @@ A sequência recomendada é:
 
 A primeira discussão técnica deveria ser o **modelo financeiro central**, não Kafka, Redis ou cloud.
 
-Precisamos responder com exemplos concretos:
+O primeiro debate usa exemplos concretos. Já foram definidos o saldo inicial (ADR-016), a despesa de compra de consumo no cartão e o pagamento da fatura (ADR-008), e a separação entre gasto integral e compromissos futuros. Restam perguntas:
 
 - o que é uma Transaction?
 - transferência usa uma ou duas transações?
-- compra de cartão é despesa em qual data?
-- pagamento da fatura é o quê?
-- parcelamento representa gasto total na compra, compromisso futuro, ou ambos em visões diferentes?
 - reembolso altera transação original ou cria movimento relacionado?
 - como tratar estorno?
 - como tratar split?
-- como tratar saldo inicial?
+- como registrar e aprovar ajustes de reconciliação?
+- como detalhar ciclo, juros e pagamento parcial da fatura?
+
+Money em centavos de BRL foi aprovado na ADR-006. A estrutura de `Transaction`, a representação das transferências, reembolso/estorno, split e detalhes da fatura continuam abertos.
 
 Se esse modelo estiver errado, toda arquitetura tecnicamente impecável apenas calculará números errados com grande eficiência.
 

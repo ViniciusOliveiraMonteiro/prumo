@@ -24,8 +24,8 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 - **Ferramentas encontradas em 2026-10-05:** Git 2.43.0, Node 24.21.0, npm 11.19.0, Corepack 0.36.0 e pnpm 12.8.1. `psql` não está instalado nesta distro WSL 2. A presença de pnpm não constitui decisão de gerenciador de pacotes.
 - **Serviços locais:** o usuário já usa Docker Desktop no Windows. Em 2026-10-05, `docker info` nesta distro WSL 2 respondeu com servidor 29.8.1 após ativar a integração WSL. Não foi instalado outro Docker Engine/CLI na distro.
 - **Código de produto:** ainda não iniciado. A fase A do Plano de Estudos exige definição de domínio, segurança e arquitetura antes do bootstrap.
-- **Sprint 1 em estudo:** exemplos reproduzíveis de transferência, saldo inicial, compra/pagamento de cartão, parcelas, reembolso e estorno registrados em `docs/domain/financial-examples.md`. As escolhas de competência, reconciliação e rateio seguem como hipóteses ou pendências; ADRs ainda necessárias.
-- **Propostas para revisão:** alternativas, recomendações e perguntas de Money, saldo inicial e cartão/fatura em `docs/domain/model-proposals.md`; nenhuma decisão foi aprovada.
+- **Sprint 1 em estudo:** exemplos reproduzíveis de transferência, saldo inicial, compra/pagamento de cartão, parcelas, reembolso e estorno em `docs/domain/financial-examples.md`. A regra principal de competência da compra no cartão foi aprovada; rateio, ajustes e casos detalhados ainda são pendências.
+- **Decisões aprovadas:** BRL em centavos inteiros com moeda explícita (ADR-006); saldo inicial datado e posterior derivado (ADR-016); compra de consumo integralmente no mês da compra, com parcelas/caixa em visão separada (ADR-008). Alternativas e pendências estão em `docs/domain/model-proposals.md`.
 - **Glossário inicial:** conceitos centrais e limites ainda pendentes em `docs/domain/glossary.md`.
 
 ## Sprint 0 — Ambiente e organização
@@ -53,11 +53,11 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 **Gate:** regras e exemplos reproduzíveis, dúvidas explicitadas, ADRs necessárias aprovadas e nenhuma regra financeira crítica decidida só pelo código. Referências: Plano Mestre, seções 7–10 e 66; Plano de Estudos, fase A.
 
-**Aceite parcial:** exemplos aritméticos e invariantes de BR-001 a BR-003 documentados em `docs/domain/financial-examples.md`; revisar com o usuário a semântica de competência antes de aprovar ADRs e transformar os exemplos em testes.
+**Aceite parcial:** exemplos aritméticos e invariantes de BR-001 a BR-003 em `docs/domain/financial-examples.md`; ADR-006, ADR-008 e ADR-016 aceitas para o núcleo acordado, com limites de escopo explícitos. Ainda falta converter os exemplos em testes quando houver código e fechar as regras pendentes.
 
-**Outro artefato em estudo:** glossário inicial em `docs/domain/glossary.md`, sem fechar a estrutura de `Transaction` ou as regras de competência.
+**Outro artefato em estudo:** glossário inicial em `docs/domain/glossary.md`, sem fechar a estrutura de `Transaction` ou as regras de competência ainda pendentes.
 
-**Próxima ação da Sprint 1:** responder às três perguntas de `docs/domain/model-proposals.md`, registrar as decisões aprovadas em ADRs e ajustar os exemplos aos períodos escolhidos.
+**Próxima ação da Sprint 1:** definir a estrutura de `Transaction` e transferência (ADR-007), aprofundar regras de fatura e reconciliação, preparar casos de uso e threat model inicial; não implementar essas áreas antes das decisões correspondentes.
 
 ## Sprint 2 — Arquitetura e escolhas tecnológicas
 
@@ -125,4 +125,4 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 ## Próxima ação
 
-Na Sprint 1, revisar `docs/domain/model-proposals.md` com o usuário, responder às três perguntas ali registradas e então redigir as ADRs de Money e cartão/fatura. Em paralelo, preparar glossário, casos de uso, esboço de Household/Transaction e threat model inicial. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.
+Na Sprint 1, avançar para ADR-007 de `Transaction`/transferência, esboço de Household/Transaction, casos de uso e threat model inicial. Tratar rateio, orçamento mensal, detalhes de fatura e reconciliação como pendências. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.
