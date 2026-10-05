@@ -16,14 +16,17 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 ## Estado atual
 
-- **Em andamento:** Sprint 0, preparação do workspace.
+- **Concluído:** Sprint 0, preparação do workspace; a integração Docker Desktop ↔ WSL 2 foi validada.
+- **Em andamento:** Sprint 1, modelo financeiro e segurança inicial.
 - **Concluído:** `prumo-web/` e `prumo-api/` criados; decisão pelo monorepo registrada em `docs/decisions/ADR-001-monorepo.md`; inventário básico de ferramentas realizado.
 - **Concluído:** Git inicializado pelo usuário na raiz, branch `main`; os dois diretórios de aplicação pertencem ao mesmo repositório. README da raiz, `.gitignore` básico e commit inicial criados.
 - **Concluído:** `main` publicada em `git@github.com:ViniciusOliveiraMonteiro/prumo.git` e acompanhando `origin/main`. Em 2026-10-05, o teste `ssh -T` autenticou no GitHub com `SSH_AUTH_SOCK` explícito; `git ls-remote` confirmou acesso ao repositório e a API pública do GitHub retornou `404`, evidência de que ele não está público. A variável não está definida por padrão nesta sessão.
 - **Ferramentas encontradas em 2026-10-05:** Git 2.43.0, Node 24.21.0, npm 11.19.0, Corepack 0.36.0 e pnpm 12.8.1. `psql` não está instalado nesta distro WSL 2. A presença de pnpm não constitui decisão de gerenciador de pacotes.
-- **Serviços locais:** o usuário já usa Docker Desktop no Windows. Nesta distro, `docker` aponta para o executável do Docker Desktop, mas `docker info` informa que a integração WSL não está disponível; também não há `/var/run/docker.sock` nem montagem `docker-desktop` em `/mnt/wsl`. Verificar, no Docker Desktop, Settings → Resources → WSL Integration para esta distro e depois repetir `docker info` no terminal WSL. Não instalar outro Docker Engine/CLI aqui para contornar a integração.
+- **Serviços locais:** o usuário já usa Docker Desktop no Windows. Em 2026-10-05, `docker info` nesta distro WSL 2 respondeu com servidor 29.8.1 após ativar a integração WSL. Não foi instalado outro Docker Engine/CLI na distro.
 - **Código de produto:** ainda não iniciado. A fase A do Plano de Estudos exige definição de domínio, segurança e arquitetura antes do bootstrap.
 - **Sprint 1 em estudo:** exemplos reproduzíveis de transferência, saldo inicial, compra/pagamento de cartão, parcelas, reembolso e estorno registrados em `docs/domain/financial-examples.md`. As escolhas de competência, reconciliação e rateio seguem como hipóteses ou pendências; ADRs ainda necessárias.
+- **Propostas para revisão:** alternativas, recomendações e perguntas de Money, saldo inicial e cartão/fatura em `docs/domain/model-proposals.md`; nenhuma decisão foi aprovada.
+- **Glossário inicial:** conceitos centrais e limites ainda pendentes em `docs/domain/glossary.md`.
 
 ## Sprint 0 — Ambiente e organização
 
@@ -36,7 +39,7 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 | Inventariar ferramentas locais | concluído | Versões e ausências registradas acima. |
 | Inicializar um único Git na raiz | concluído | `git rev-parse --show-toplevel` aponta para a pasta pai a partir da raiz, de `prumo-web/` e de `prumo-api/`. |
 | Escolher estratégia de serviços locais | concluído | Usar Docker Desktop existente, sem instalação na distro. |
-| Validar integração Docker Desktop ↔ esta distro WSL 2 | bloqueado | `docker info` retorna dados do servidor no terminal WSL; a seleção da distro no Docker Desktop depende do usuário. |
+| Validar integração Docker Desktop ↔ esta distro WSL 2 | concluído | `docker info` retornou a versão 29.8.1 do servidor nesta distro WSL 2. |
 | Preparar baseline do repositório | concluído | README, `.gitignore` e commit inicial criados; PDFs de referência da raiz ficam locais, com Markdown como fonte mantida. |
 | Publicar repositório privado no GitHub | concluído | `main` publicada em `origin` e sem acesso pela API pública; o push funcionou com `SSH_AUTH_SOCK` explícito. |
 
@@ -51,6 +54,10 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 **Gate:** regras e exemplos reproduzíveis, dúvidas explicitadas, ADRs necessárias aprovadas e nenhuma regra financeira crítica decidida só pelo código. Referências: Plano Mestre, seções 7–10 e 66; Plano de Estudos, fase A.
 
 **Aceite parcial:** exemplos aritméticos e invariantes de BR-001 a BR-003 documentados em `docs/domain/financial-examples.md`; revisar com o usuário a semântica de competência antes de aprovar ADRs e transformar os exemplos em testes.
+
+**Outro artefato em estudo:** glossário inicial em `docs/domain/glossary.md`, sem fechar a estrutura de `Transaction` ou as regras de competência.
+
+**Próxima ação da Sprint 1:** responder às três perguntas de `docs/domain/model-proposals.md`, registrar as decisões aprovadas em ADRs e ajustar os exemplos aos períodos escolhidos.
 
 ## Sprint 2 — Arquitetura e escolhas tecnológicas
 
@@ -118,4 +125,4 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 ## Próxima ação
 
-Continuar a Sprint 0: habilitar/confirmar a integração desta distro em Docker Desktop e repetir `docker info`; configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos. Na Sprint 1, revisar os exemplos financeiros com o usuário, responder às pendências de competência e saldo inicial, e então redigir as ADRs de Money e cartão/fatura. Nenhuma dessas decisões depende de Docker ou da escolha de framework.
+Na Sprint 1, revisar `docs/domain/model-proposals.md` com o usuário, responder às três perguntas ali registradas e então redigir as ADRs de Money e cartão/fatura. Em paralelo, preparar glossário, casos de uso, esboço de Household/Transaction e threat model inicial. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.
