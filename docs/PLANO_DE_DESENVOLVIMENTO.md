@@ -25,9 +25,10 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 - **Serviços locais:** o usuário já usa Docker Desktop no Windows. Em 2026-10-05, `docker info` nesta distro WSL 2 respondeu com servidor 29.8.1 após ativar a integração WSL. Não foi instalado outro Docker Engine/CLI na distro.
 - **Código de produto:** ainda não iniciado. A fase A do Plano de Estudos exige definição de domínio, segurança e arquitetura antes do bootstrap.
 - **Sprint 1 em estudo:** exemplos reproduzíveis de transferência, saldo inicial, compra/pagamento de cartão, parcelas, reembolso e estorno em `docs/domain/financial-examples.md`. A regra principal de competência da compra no cartão foi aprovada; rateio, ajustes e casos detalhados ainda são pendências.
-- **Decisões aprovadas:** BRL em centavos inteiros com moeda explícita (ADR-006); saldo inicial datado e posterior derivado (ADR-016); compra de consumo integralmente no mês da compra, com parcelas/caixa em visão separada (ADR-008). Alternativas e pendências estão em `docs/domain/model-proposals.md`.
+- **Decisões aprovadas:** BRL em centavos inteiros com moeda explícita (ADR-006); saldo inicial datado e posterior derivado (ADR-016); compra de consumo integralmente no mês da compra, com parcelas/caixa em visão separada (ADR-008); `Transaction` como evento e transferência com dois movimentos opostos e atômicos (ADR-007). Alternativas e pendências estão em `docs/domain/model-proposals.md` e `docs/domain/transaction-model-proposal.md`.
 - **Glossário inicial:** conceitos centrais e limites ainda pendentes em `docs/domain/glossary.md`.
-- **ADR-007 em discussão:** alternativas para `Transaction` e transferência em `docs/domain/transaction-model-proposal.md`; a recomendação de evento com movimentos vinculados ainda não foi aprovada.
+- **ADR-007 aceita para o núcleo:** alternativas e exemplo de `Transaction`/transferência em `docs/domain/transaction-model-proposal.md`; estrutura física e demais eventos ainda pendentes.
+- **Segurança em estudo:** threat model inicial com fronteiras, ameaças e verificações candidatas em `docs/security/threat-model.md`; controles ainda não implementados.
 
 ## Sprint 0 — Ambiente e organização
 
@@ -54,11 +55,11 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 **Gate:** regras e exemplos reproduzíveis, dúvidas explicitadas, ADRs necessárias aprovadas e nenhuma regra financeira crítica decidida só pelo código. Referências: Plano Mestre, seções 7–10 e 66; Plano de Estudos, fase A.
 
-**Aceite parcial:** exemplos aritméticos e invariantes de BR-001 a BR-003 em `docs/domain/financial-examples.md`; ADR-006, ADR-008 e ADR-016 aceitas para o núcleo acordado, com limites de escopo explícitos. Ainda falta converter os exemplos em testes quando houver código e fechar as regras pendentes.
+**Aceite parcial:** exemplos aritméticos e invariantes de BR-001 a BR-003 em `docs/domain/financial-examples.md`; ADR-006, ADR-007, ADR-008 e ADR-016 aceitas para o núcleo acordado, com limites de escopo explícitos. Ainda falta converter os exemplos em testes quando houver código e fechar as regras pendentes.
 
-**Outro artefato em estudo:** glossário inicial em `docs/domain/glossary.md`, sem fechar a estrutura de `Transaction` ou as regras de competência ainda pendentes.
+**Outro artefato em estudo:** glossário inicial em `docs/domain/glossary.md`, com a estrutura física de `Transaction` e regras de competência ainda pendentes.
 
-**Próxima ação da Sprint 1:** revisar `docs/domain/transaction-model-proposal.md` e escolher a estrutura de `Transaction`/transferência para a ADR-007; depois aprofundar regras de fatura e reconciliação, preparar casos de uso e threat model inicial.
+**Próxima ação da Sprint 1:** detalhar os eventos de receita/despesa e sua relação com movimentos, aprofundar regras de fatura e reconciliação, preparar casos de uso e revisar o threat model inicial. Desenhar ERD só após resolver os limites necessários de cada operação.
 
 ## Sprint 2 — Arquitetura e escolhas tecnológicas
 
@@ -126,4 +127,4 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 ## Próxima ação
 
-Na Sprint 1, revisar a recomendação de `Transaction`/transferência em `docs/domain/transaction-model-proposal.md` e registrar a ADR-007 após escolha; preparar esboço de Household/Transaction, casos de uso e threat model inicial. Tratar rateio, orçamento mensal, detalhes de fatura e reconciliação como pendências. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.
+Na Sprint 1, detalhar os eventos de receita/despesa e os efeitos de cartão sobre o modelo da ADR-007; preparar casos de uso e esboço conceitual de Household/Transaction, além de revisar `docs/security/threat-model.md`. Tratar rateio, orçamento mensal, detalhes de fatura e reconciliação como pendências. Configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos.

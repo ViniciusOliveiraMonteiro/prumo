@@ -7,10 +7,10 @@
 | Household | Unidade que reúne pessoas e dados financeiros sob um limite comum de acesso. | Papéis e eventual privacidade por conta ainda não definidos. |
 | Account (conta) | Lugar ou instrumento em que o household acompanha um saldo, como corrente, poupança ou carteira. | Marco inicial datado e saldo derivado definidos (ADR-016); tipos, ajustes e visibilidade ainda aguardam modelagem. |
 | Saldo inicial | Valor conhecido de uma conta em uma data de partida para o histórico no Prumo. | Não é receita desse período; o saldo posterior é derivado (ADR-016). Persistência e correção detalhadas ainda aguardam decisão. |
-| Transaction (transação) | Registro de um evento financeiro com valor, data, origem e contexto suficientes para explicar seu efeito. | Ainda não foi decidido se transferência terá um ou dois registros nem se parcelas futuras serão transações. |
+| Transaction (transação) | Evento financeiro do household com efeitos de saldo em movimentos vinculados (ADR-007). | Estrutura física e representação de cartão/parcelas futuras ainda aguardam decisão. |
 | Income (receita) | Entrada econômica atribuível ao household. | Data de reconhecimento e receitas extraordinárias ainda exigem regra. |
 | Expense (despesa) | Saída econômica atribuível ao household. | Compra de consumo no cartão é reconhecida integralmente na compra (ADR-008); outras competências ainda exigem regra. |
-| Transfer (transferência) | Deslocamento de valor entre contas do mesmo household, sem alterar sua receita ou despesa total. | Movimentações entre households e a representação dos dois lados aguardam decisão. |
+| Transfer (transferência) | Evento com dois movimentos de saldo opostos e vinculados entre contas distintas do mesmo household, sem alterar receita ou despesa total (ADR-007). | Movimentações entre households, reversão e importação de um lado sem par aguardam decisão. |
 | Credit Card Purchase (compra no cartão) | Compra que cria obrigação perante o emissor do cartão. | Compra de consumo é despesa integral na data da compra (ADR-008); estrutura de compra, parcelas e fatura ainda aguarda decisão. |
 | Installment (parcela) | Fração de uma obrigação parcelada com valor e vencimento previstos. | O cronograma precisa conservar exatamente o total da compra; representação e rateio aguardam ADR. |
 | Statement (fatura) | Agrupamento de obrigações de um ciclo do cartão, com fechamento e vencimento. | Fechamento não cria gasto adicional; regras de pagamento parcial, juros e estorno estão pendentes. |

@@ -21,7 +21,7 @@ Estado inicial: conta corrente R$ 0, poupança R$ 0, investimento R$ 0, passivos
 | Transferir R$ 1.000 da corrente para poupança | 2.000 | 1.000 | 0 | 3.000 | 0 | 3.000 |
 | Transferir R$ 500 da poupança para investimento próprio | 2.000 | 500 | 500 | 3.000 | 0 | 3.000 |
 
-**Invariante BR-001:** cada transferência reduz uma conta e aumenta outra pelo mesmo valor; receita, despesa e patrimônio total permanecem iguais. Uma transferência para corretora só preserva essa invariante se o ativo de destino pertencer ao mesmo household e estiver incluído na visão patrimonial. Movimentações entre households requerem outra regra.
+**Invariante BR-001/ADR-007:** um evento de transferência liga dois movimentos opostos e atômicos; cada transferência reduz uma conta e aumenta outra pelo mesmo valor. Receita, despesa e patrimônio total permanecem iguais. Uma transferência para corretora só preserva essa invariante se o ativo de destino pertencer ao mesmo household e estiver incluído na visão patrimonial. Movimentações entre households requerem outra regra.
 
 ## 2. Saldo inicial e reconciliação (DOM-002)
 

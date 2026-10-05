@@ -132,6 +132,7 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Money no MVP | DEFINIDO | BRL em centavos inteiros com moeda explícita, sem conversão cambial; ver ADR-006. |
 | Saldo de conta | DEFINIDO para o núcleo | Marco inicial datado e saldo posterior derivado; reconciliação mostra diferenças; ver ADR-016. |
 | Cartão no relatório principal | DEFINIDO para compras de consumo | Despesa integral na data da compra; fatura, parcelas e caixa em visão separada; ver ADR-008. |
+| Transaction/transferência | DEFINIDO para o núcleo | `Transaction` é evento do household; transferência interna tem dois movimentos vinculados, opostos e atômicos; ver ADR-007. |
 | Cache | NÃO DEFINIDO | Redis apenas quando existir caso real. |
 | Jobs | HIPÓTESE | BullMQ + Redis para imports, recalculações e tarefas assíncronas. |
 | Event streaming | NÃO DEFINIDO | Kafka não entra inicialmente; avaliar somente mediante lacuna concreta. |
@@ -337,7 +338,7 @@ Origem ou destino financeiro: conta corrente, poupança, carteira, dinheiro, con
 
 ### Transaction
 
-Movimentação financeira registrada no sistema.
+Evento financeiro registrado para um household. Seus efeitos sobre saldos ficam em movimentos vinculados; para transferência interna são exatamente dois movimentos opostos, conforme ADR-007. A estrutura física ainda não foi definida.
 
 ### Expense
 
@@ -349,7 +350,7 @@ Entrada econômica atribuível ao household.
 
 ### Transfer
 
-Movimentação entre contas pertencentes ao mesmo household. Não deve inflar receitas nem despesas.
+Evento que move valor entre duas contas distintas do mesmo household por dois movimentos vinculados, de mesma moeda e magnitude e sinais opostos. Não infla receitas nem despesas (ADR-007).
 
 ### Credit Card Purchase
 
@@ -386,6 +387,8 @@ Antes do ERD, precisamos registrar invariantes.
 ## BR-001 - Transferência interna não é receita/despesa
 
 Transferir R$ 1.000 da conta corrente para uma conta de investimento não significa gastar R$ 1.000 nem ganhar R$ 1.000.
+
+**DEFINIDO no núcleo:** um evento `Transaction` de transferência liga dois movimentos de saldo que se anulam, gravados atomicamente e sem entrar em receita/despesa (ADR-007).
 
 ## BR-002 - Pagamento de fatura não duplica despesa
 
@@ -2225,7 +2228,7 @@ ADR-003 Backend framework
 ADR-004 ORM
 ADR-005 Authentication
 ADR-006 Money representation (aceito)
-ADR-007 Transaction model
+ADR-007 Transaction/transfer model (aceito para o núcleo; demais eventos pendentes)
 ADR-008 Credit card/installment recognition (aceito para a regra de reconhecimento; detalhes do modelo pendentes)
 ADR-009 Async jobs
 ADR-010 Event publishing/outbox
@@ -2942,17 +2945,16 @@ A sequência recomendada é:
 
 A primeira discussão técnica deveria ser o **modelo financeiro central**, não Kafka, Redis ou cloud.
 
-O primeiro debate usa exemplos concretos. Já foram definidos o saldo inicial (ADR-016), a despesa de compra de consumo no cartão e o pagamento da fatura (ADR-008), e a separação entre gasto integral e compromissos futuros. Restam perguntas:
+O primeiro debate usa exemplos concretos. Já foram definidos o saldo inicial (ADR-016), a despesa de compra de consumo no cartão e o pagamento da fatura (ADR-008), a separação entre gasto integral e compromissos futuros, e a transferência como evento com dois movimentos vinculados (ADR-007). Restam perguntas:
 
-- o que é uma Transaction?
-- transferência usa uma ou duas transações?
+- como representar os outros tipos de evento `Transaction`?
 - reembolso altera transação original ou cria movimento relacionado?
 - como tratar estorno?
 - como tratar split?
 - como registrar e aprovar ajustes de reconciliação?
 - como detalhar ciclo, juros e pagamento parcial da fatura?
 
-Money em centavos de BRL foi aprovado na ADR-006. A estrutura de `Transaction`, a representação das transferências, reembolso/estorno, split e detalhes da fatura continuam abertos.
+Money em centavos de BRL foi aprovado na ADR-006. A estrutura física, os demais tipos de `Transaction`, reembolso/estorno, split e detalhes da fatura continuam abertos.
 
 Se esse modelo estiver errado, toda arquitetura tecnicamente impecável apenas calculará números errados com grande eficiência.
 
