@@ -9,7 +9,7 @@ O Plano Mestre considerava um monorepo como hipótese. O Codex trabalha na pasta
 
 ## Decisão
 
-Usar um único repositório Git na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos. Instruções do Codex e documentos compartilhados ficam no mesmo repositório. A estrutura, o Git da raiz e o commit inicial foram criados; `origin` está configurado. A autenticação no GitHub foi validada com um socket SSH explícito, mas a publicação ainda está pendente.
+Usar um único repositório Git na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos. Instruções do Codex e documentos compartilhados ficam no mesmo repositório. A estrutura e o Git da raiz foram criados; `main` foi publicada no `origin`. O acesso remoto usa um socket SSH explícito nesta sessão.
 
 ## Alternativa considerada
 
@@ -19,7 +19,7 @@ Dois repositórios independentes dariam históricos e pipelines separados. O mon
 
 - Mudanças de contrato entre frontend e backend ainda exigirão validação dos dois lados.
 - O mecanismo de publicação/geração do contrato da API permanece não definido; OpenAPI é uma direção sugerida no Plano Mestre, não uma decisão desta ADR.
-- Os documentos compartilhados entrarão no mesmo histórico Git quando a raiz puder ser inicializada.
+- Os documentos compartilhados seguem no mesmo histórico Git das duas aplicações.
 - A decisão de monorepo não aprova Next.js, NestJS, banco ou gerenciador de pacotes.
 
 ## Conceitos para estudo

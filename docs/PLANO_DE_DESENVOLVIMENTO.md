@@ -19,7 +19,7 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 - **Em andamento:** Sprint 0, preparação do workspace.
 - **Concluído:** `prumo-web/` e `prumo-api/` criados; decisão pelo monorepo registrada em `docs/decisions/ADR-001-monorepo.md`; inventário básico de ferramentas realizado.
 - **Concluído:** Git inicializado pelo usuário na raiz, branch `main`; os dois diretórios de aplicação pertencem ao mesmo repositório. README da raiz, `.gitignore` básico e commit inicial criados.
-- **Pendente:** publicar `main` em `git@github.com:ViniciusOliveiraMonteiro/prumo.git`. O remoto `origin` está configurado. Em 2026-10-05, o teste `ssh -T` autenticou no GitHub ao apontar `SSH_AUTH_SOCK` explicitamente para um socket de agente com chave; a variável não está definida por padrão nesta sessão. O push e a verificação de privacidade do remoto ainda não foram feitos.
+- **Concluído:** `main` publicada em `git@github.com:ViniciusOliveiraMonteiro/prumo.git` e acompanhando `origin/main`. Em 2026-10-05, o teste `ssh -T` autenticou no GitHub com `SSH_AUTH_SOCK` explícito; `git ls-remote` confirmou acesso ao repositório e a API pública do GitHub retornou `404`, evidência de que ele não está público. A variável não está definida por padrão nesta sessão.
 - **Ferramentas encontradas em 2026-10-05:** Git 2.43.0, Node 24.21.0, npm 11.19.0, Corepack 0.36.0 e pnpm 12.8.1. `psql` não está instalado nesta distro WSL 2. A presença de pnpm não constitui decisão de gerenciador de pacotes.
 - **Serviços locais:** o usuário já usa Docker Desktop no Windows. Nesta distro, `docker` aponta para o executável do Docker Desktop, mas `docker info` informa que a integração WSL não está disponível; também não há `/var/run/docker.sock` nem montagem `docker-desktop` em `/mnt/wsl`. Verificar, no Docker Desktop, Settings → Resources → WSL Integration para esta distro e depois repetir `docker info` no terminal WSL. Não instalar outro Docker Engine/CLI aqui para contornar a integração.
 - **Código de produto:** ainda não iniciado. A fase A do Plano de Estudos exige definição de domínio, segurança e arquitetura antes do bootstrap.
@@ -38,7 +38,7 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 | Escolher estratégia de serviços locais | concluído | Usar Docker Desktop existente, sem instalação na distro. |
 | Validar integração Docker Desktop ↔ esta distro WSL 2 | bloqueado | `docker info` retorna dados do servidor no terminal WSL; a seleção da distro no Docker Desktop depende do usuário. |
 | Preparar baseline do repositório | concluído | README, `.gitignore` e commit inicial criados; PDFs de referência da raiz ficam locais, com Markdown como fonte mantida. |
-| Publicar repositório privado no GitHub | a fazer | `main` publicada em `origin` e privacidade verificada; autenticação SSH funcionou com `SSH_AUTH_SOCK` explícito, mas o push ainda não foi feito. |
+| Publicar repositório privado no GitHub | concluído | `main` publicada em `origin` e sem acesso pela API pública; o push funcionou com `SSH_AUTH_SOCK` explícito. |
 
 **Demo/gate:** mostrar a estrutura, a ADR e o inventário; comprovar Git da raiz e caminho para serviços locais antes de seguir para bootstrap. As decisões de domínio podem avançar enquanto o ambiente de serviços locais é definido.
 
@@ -118,4 +118,4 @@ Status: `a fazer`, `em andamento`, `bloqueado`, `concluído`. O plano usa ordem 
 
 ## Próxima ação
 
-Continuar a Sprint 0: verificar a privacidade do remoto e publicar `main` usando explicitamente o socket SSH validado; configurar `SSH_AUTH_SOCK` de modo persistente nesta distro se necessário. Habilitar/confirmar a integração desta distro em Docker Desktop e repetir `docker info`. Na Sprint 1, revisar os exemplos financeiros com o usuário, responder às pendências de competência e saldo inicial, e então redigir as ADRs de Money e cartão/fatura. Nenhuma dessas decisões depende de Docker ou da escolha de framework.
+Continuar a Sprint 0: habilitar/confirmar a integração desta distro em Docker Desktop e repetir `docker info`; configurar `SSH_AUTH_SOCK` de modo persistente se forem necessários novos comandos Git remotos. Na Sprint 1, revisar os exemplos financeiros com o usuário, responder às pendências de competência e saldo inicial, e então redigir as ADRs de Money e cartão/fatura. Nenhuma dessas decisões depende de Docker ou da escolha de framework.
