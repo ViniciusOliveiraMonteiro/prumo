@@ -9,7 +9,7 @@ O Plano Mestre considerava um monorepo como hipótese. O Codex trabalha na pasta
 
 ## Decisão
 
-Usar um único repositório Git na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos. Instruções do Codex e documentos compartilhados ficam no mesmo repositório. A estrutura, o Git da raiz e o commit inicial foram criados; `origin` está configurado, mas a publicação aguarda autenticação SSH funcional.
+Usar um único repositório Git na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos. Instruções do Codex e documentos compartilhados ficam no mesmo repositório. A estrutura, o Git da raiz e o commit inicial foram criados; `origin` está configurado. A autenticação no GitHub foi validada com um socket SSH explícito, mas a publicação ainda está pendente.
 
 ## Alternativa considerada
 
