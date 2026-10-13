@@ -1,0 +1,16 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  experimental: { useTypeScriptCli: false },
+  async rewrites() {
+    const apiOrigin =
+      process.env.PRUMO_API_INTERNAL_ORIGIN ?? "http://127.0.0.1:3001";
+
+    return [
+      { source: "/api", destination: `${apiOrigin}/api` },
+      { source: "/api/:path*", destination: `${apiOrigin}/api/:path*` },
+    ];
+  },
+};
+
+export default nextConfig;

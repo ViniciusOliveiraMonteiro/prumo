@@ -124,10 +124,12 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Aplicações | DEFINIDO | Interface em `prumo-web/` e API em `prumo-api/`. |
 | Produto | DEFINIDO | Gestão e inteligência financeira de um household. |
 | Público inicial | DEFINIDO | Uso pessoal/familiar; não produto B2B no MVP. |
-| Frontend | HIPÓTESE | Next.js + TypeScript. |
-| Backend | HIPÓTESE | NestJS + TypeScript. |
-| Banco | HIPÓTESE | PostgreSQL. |
-| ORM | NÃO DEFINIDO | Prisma é candidato; avaliar Drizzle/TypeORM se houver motivo. |
+| Frontend | DEFINIDO | Next.js com App Router + TypeScript; ver ADR-030. |
+| Backend | DEFINIDO | NestJS + TypeScript em monólito modular; ver ADR-030. |
+| Banco | DEFINIDO | PostgreSQL; RLS ainda pendente; ver ADR-030. |
+| Gerenciador de pacotes | DEFINIDO | pnpm workspaces na raiz, lockfile único; ver ADR-030. |
+| ORM | DEFINIDO | Drizzle com driver PostgreSQL, migrações SQL versionadas e transações explícitas; ver ADR-031. |
+| Custo inicial | DIRETRIZ | Priorizar software livre e serviços sem cobrança obrigatória; estimar hospedagem e operação antes de abrir usuários externos. |
 | Monorepo | DEFINIDO | Um repositório na pasta pai, com `prumo-web/` e `prumo-api/`; ver ADR-001. |
 | Money no MVP | DEFINIDO | BRL em centavos inteiros com moeda explícita, sem conversão cambial; ver ADR-006. |
 | Saldo de conta | DEFINIDO para o núcleo | Marco inicial datado e saldo posterior derivado; reconciliação mostra diferenças; ver ADR-016. |
@@ -137,7 +139,8 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Cache | NÃO DEFINIDO | Redis apenas quando existir caso real. |
 | Jobs | HIPÓTESE | BullMQ + Redis para imports, recalculações e tarefas assíncronas. |
 | Event streaming | NÃO DEFINIDO | Kafka não entra inicialmente; avaliar somente mediante lacuna concreta. |
-| Autenticação | NÃO DEFINIDO | Avaliar solução própria, Auth.js, Clerk ou provedor equivalente. |
+| Autenticação | DEFINIDO para primeiro acesso web privado | ADR-033 aceita autoridade no NestJS e sessão revogável em PostgreSQL; biblioteca candidata ainda precisa de validação. |
+| Topologia web/API no navegador | DEFINIDO para primeiro acesso web privado | ADR-034 aceita origem única, com páginas no Next.js e `/api` na API NestJS; hospedagem e proxy de implantação seguem pendentes. |
 | Multi-user | DEFINIDO conceitualmente | Household + memberships. Implementação detalhada pendente. |
 | Infra cloud | NÃO DEFINIDO | Comparar Vercel + provedor backend vs cloud unificada. |
 | Observabilidade | HIPÓTESE | OpenTelemetry + error tracking + logs estruturados. |
@@ -461,7 +464,15 @@ Dados mínimos propostos:
 
 **DEFINIDO para saldo:** usar marco inicial no início da data informada e derivar o saldo dos movimentos conhecidos nessa data ou depois; reconciliação mostra diferenças sem ajuste automático. Movimento anterior ao marco fica pendente e só integra o histórico após a pessoa informar e justificar um marco anterior com saldo nessa data, preservando a trilha; o Prumo não presume o saldo anterior. Valor inicial errado pode ser corrigido após movimentos, com justificativa, trilha, recálculo dos saldos e revisão das divergências afetadas, sem criar receita, despesa ou transação. Data do marco informada cedo ou tarde demais pode ser corrigida para outra data com saldo informado nessa nova data, motivo e trilha, mesmo sem movimento anterior a incluir; movimentos que ficarem anteriores permanecem visíveis e pendentes, e os saldos são recalculados. Sem horário confiável, movimentos na mesma data são mostrados por sequência de registro estável e identificada, sem alegar cronologia real; o saldo final do dia independe da ordem. Consulta por data sem horário retorna o saldo ao fim do dia após todos os movimentos efetivos nessa data; antes do marco, mostra saldo não calculável e a data do marco, sem valor presumido (ADR-016). Distinção operacional entre datas dos movimentos e estrutura de persistência permanecem pendentes.
 
-**DEFINIDO para datas da fonte em movimentos de conta:** a ADR-025 usa o dia em que o saldo da conta foi efetivamente afetado, guarda separadamente datas de ordem/compra, compensação e registro, e mantém em revisão alegações conflitantes ou sem dia suficiente, sem fabricar data ou duplicar movimento. Registro manual identifica a data informada pela pessoa; conflito posterior preserva o último efeito sustentado como contestado até revisão. Correspondência por formato, horário confiável e retificação financeira continuam pendentes.
+**DEFINIDO para datas da fonte em movimentos de conta:** a ADR-025 usa o dia em que o saldo da conta foi efetivamente afetado, guarda separadamente datas de ordem/compra, compensação e registro, e mantém em revisão alegações conflitantes ou sem dia suficiente, sem fabricar data ou duplicar movimento. Registro manual identifica a data informada pela pessoa; conflito posterior preserva o último efeito sustentado como contestado até revisão. Retificação financeira delimitada segue a ADR-026; correspondência por formato e horário confiável continuam pendentes.
+
+**DEFINIDO para retificação financeira de movimentos de conta no primeiro fluxo:** a ADR-026 escolhe versões auditáveis do mesmo fato para correção de valor, conta, data e cancelamento. Somente a versão aceita vigente compõe saldo e período econômico; fontes, motivo e autoria permanecem na trilha. Transferência preserva o par íntegro ou o débito comprovado em revisão, sem duplicação. Idempotência e concorrência desse fluxo seguem a ADR-027; baseline de isolamento segue a ADR-029. Estrutura física e decisão de RLS continuam pendentes.
+
+**DEFINIDO para idempotência e concorrência do primeiro fluxo:** a ADR-027 exige identidade persistente do pedido para retries, distinta da identidade do fato, e versão esperada para revisões concorrentes. Evento e efeitos são confirmados integralmente, com validações refeitas em estado coerente; pedido repetido não cria segundo efeito, e revisão baseada em versão vencida não é aplicada automaticamente. Saldo negativo de conta segue a ADR-028; tecnologia de lock, contrato físico e importação por formato continuam pendentes.
+
+**DEFINIDO para saldo negativo de conta no primeiro fluxo:** a ADR-028 aceita fatos válidos mesmo quando o saldo derivado fica negativo, mostrando valor assinado, dias afetados e alerta de revisão sem presumir cheque especial, empréstimo, juros ou ajuste. Transferência confirmada conserva o par; saída sem chegada mantém patrimônio afetado incompleto conforme ADR-007. Saldo disponível bancário e obrigação de crédito ainda exigem regra própria.
+
+**DEFINIDO para a baseline de isolamento técnico no primeiro fluxo:** a ADR-029 exige autorização do ator e membership ativa por operação, consultas e vínculos escopados ao household autorizado, confirmação íntegra e testes negativos A/B. RLS permanece hipótese a decidir em ADR após laboratório com banco, role e pool escolhidos, antes de dados financeiros de usuários externos. A decisão não define autenticação, papéis, stack ou esquema físico.
 
 ## UC-003 - Registrar transação manual
 
@@ -927,7 +938,7 @@ PostgreSQL Redis Object Storage
 
 ## 16.1 Princípio: monólito modular primeiro
 
-**HIPÓTESE:** API em monólito modular e worker separado.
+**DEFINIDO para a API:** NestJS em monólito modular (ADR-030). Worker separado continua hipótese para quando houver trabalho assíncrono justificado.
 
 Justificativa:
 
@@ -984,7 +995,7 @@ Sugestão: evitar tanto o `Service` de 4.000 linhas quanto a cerimônia de 14 in
 
 # 18. Arquitetura frontend
 
-**HIPÓTESE:** Next.js com App Router.
+**DEFINIDO:** Next.js com App Router para a web (ADR-030). O padrão detalhado de fetching segue pendente.
 
 Responsabilidades:
 
@@ -1020,17 +1031,19 @@ Sugestão inicial:
 
 **DEFINIDO:** um monorepo na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos e os documentos compartilhados na raiz/`docs/`. Ver `docs/decisions/ADR-001-monorepo.md`.
 
-O Git foi inicializado na raiz pelo usuário, na branch `main`, e o commit inicial foi criado. `origin` aponta para `git@github.com:ViniciusOliveiraMonteiro/prumo.git`; o push ainda está pendente por falta de autenticação SSH funcional nesta distro. As duas aplicações não têm repositórios Git próprios. Dependências, verificações e pipelines serão definidos no bootstrap, após as decisões da fase inicial.
+O Git foi inicializado na raiz pelo usuário, na branch `main`, e o commit inicial foi criado. `origin` aponta para `git@github.com:ViniciusOliveiraMonteiro/prumo.git`; `main` já foi publicada com um socket SSH explícito. As duas aplicações não têm repositórios Git próprios. O bootstrap local de dependências, verificações e CI está registrado em `docs/BOOTSTRAP_SPRINT_3.md`; a execução remota da CI segue pendente.
 
 ## 19.1 Ferramentas
 
-O gerenciador de pacotes e as ferramentas de build seguem como hipótese até a decisão de stack. A escolha pelo monorepo não decide Next.js, NestJS, pnpm workspaces ou Turborepo.
+O monorepo da ADR-001 não definia ferramentas. A ADR-030 escolheu Next.js, NestJS, PostgreSQL e pnpm workspaces na raiz, com lockfile único. Turborepo não foi incluído; versões e verificações locais estão registradas no bootstrap. A ADR-035 exige portas e adapters substituíveis na API, além de hooks dedicados para componentes e páginas web com lógica; componentes estáticos não exigem hooks vazios.
 
-**NÃO DEFINIDO:** se `contracts` será gerado por OpenAPI ou compartilhado manualmente.
+ORM, autenticação, contrato da API e RLS exigem decisões próprias. A escolha da stack não aprova essas opções nem o esquema físico.
 
-Sugestão: API deve publicar contrato OpenAPI e gerar client/tipos, reduzindo acoplamento direto aos DTOs do backend.
+**DEFINIDO pela ADR-032:** OpenAPI gerado localmente pela API como contrato versionado no repositório, com tipos derivados para a web. Compartilhar DTOs internos diretamente e escrever OpenAPI manualmente foram alternativas comparadas. A estratégia exata de cliente HTTP permanece pendente.
 
 # 20. API e contratos
+
+A ADR-032 definiu geração local de OpenAPI e tipos para a web, sem serviço externo ou licença paga obrigatórios, além de convenções mínimas para dinheiro, datas, idempotência e erros. **Status: aceito.** Tempo de desenvolvimento, execução local/CI e hospedagem são custos distintos; rotas, autenticação, paginação e política completa de compatibilidade continuam pendentes.
 
 ## 20.1 Convenções
 
@@ -1069,7 +1082,7 @@ Necessária especialmente em:
 
 # 21. Banco de dados e modelagem
 
-**HIPÓTESE:** PostgreSQL.
+**DEFINIDO:** PostgreSQL como banco relacional (ADR-030); esquema físico e RLS continuam pendentes.
 
 ## 21.1 Entidades candidatas
 
@@ -1163,7 +1176,9 @@ Sugestão: avaliar após modelo estabilizar, antes de abrir o produto a terceiro
 
 # 23. ORM
 
-**Status: NÃO DEFINIDO.**
+**Status: DEFINIDO pela ADR-031.**
+
+Drizzle com driver PostgreSQL, transações explícitas e migrações SQL versionadas foi escolhido. Tipo SQL monetário, nível de isolamento, RLS e esquema físico permanecem pendentes. O gate exige testes com PostgreSQL real para atomicidade, concorrência, escopo A/B e migrações.
 
 Candidatos:
 
@@ -1391,7 +1406,11 @@ Sugestão: SQL direto no MVP, snapshots apenas para métricas que realmente prec
 
 # 30. Autenticação e sessão
 
-**NÃO DEFINIDO.**
+**DEFINIDO para a estratégia do primeiro acesso web privado pela ADR-033.**
+
+NestJS é a autoridade de identidade e sessão, com sessões revogáveis em PostgreSQL e sem serviço pago obrigatório. O módulo oficial `@nestjs/authentication` é candidato sujeito a gate de compatibilidade e segurança. Store, cookie/CSRF, recuperação, abertura pública e custo operacional exigem validação própria.
+
+A ADR-034 aceita uma origem única para o navegador, com `/api` e `/api/*` roteados ao NestJS e páginas no Next.js. **Status: definido para o primeiro acesso web privado.** O roteamento local e o proxy de implantação devem preservar cookies, origem, status e proteção CSRF; fornecedor, domínio e custo de hospedagem continuam pendentes.
 
 Alternativas:
 
@@ -1487,7 +1506,7 @@ Ameaças mínimas a considerar:
 
 ## 32.3 Autenticação, sessão e MFA
 
-**Status: NÃO DEFINIDO.** A implementação deve ser decidida em ADR depois do estudo `SEC-003` e `SEC-004`.
+**Status: DEFINIDO para a estratégia do primeiro acesso web privado pela ADR-033; implementação pendente.** A validação segue os estudos `SEC-003` e `SEC-004`.
 
 Requisitos mínimos para produção externa:
 
@@ -1517,6 +1536,8 @@ user -> sessão -> membership -> household -> permission -> resource
 Nunca aceitar `householdId` enviado pelo cliente como prova suficiente de autorização.
 
 Toda entidade financeira deve ser household-scoped direta ou inequivocamente. Testes negativos entre Household A e B são obrigatórios.
+
+**DEFINIDO para a baseline do primeiro fluxo:** a ADR-029 exige contexto autorizado no backend, escopo de toda consulta e vínculo, falha fechada e testes A/B. A escolha de RLS continua separada e depende de laboratório com a stack real; esta decisão não a resolve.
 
 ### Defense in depth
 
@@ -2790,7 +2811,7 @@ Esta seção deve permanecer viva.
 
 ## D-001 - ORM
 
-**Status: NÃO DEFINIDO**
+**Status: DEFINIDO pela ADR-031.**
 
 Perguntas:
 

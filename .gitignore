@@ -8,3 +8,10 @@
 
 # Dependências locais de projetos Node
 node_modules/
+.bootstrap-drafts/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.vercel/

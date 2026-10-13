@@ -1,0 +1,7 @@
+packages:
+  - prumo-web
+  - prumo-api
+allowBuilds:
+  unrs-resolver: true
+  esbuild: true
+  '@scarf/scarf': false

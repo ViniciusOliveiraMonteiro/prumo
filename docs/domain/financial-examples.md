@@ -4,7 +4,7 @@
 
 ## Vocabulário das contas abaixo
 
-- **Caixa:** soma das contas com dinheiro disponível. A conta de investimento é mostrada separadamente, mas continua sendo um ativo do household.
+- **Caixa:** soma algébrica dos saldos calculados das contas de dinheiro; pode ser negativa em um corte (ADR-028) e não equivale ao valor disponível informado pelo banco. A conta de investimento é mostrada separadamente, mas continua sendo um ativo do household.
 - **Passivo do cartão:** valor devido ao emissor. Um aumento do passivo reduz o patrimônio líquido.
 - **Receita/despesa:** eventos econômicos do household. Compra de consumo no cartão é despesa integral na data da compra e consome o orçamento mensal nesse mês (ADR-008). Orçamento acima do planejado gera alerta com o excedente, sem bloquear o registro.
 - **Patrimônio líquido neste exemplo:** caixa + investimento − passivo do cartão. Outros ativos e passivos foram omitidos.
@@ -36,6 +36,8 @@ Estado inicial: conta corrente R$ 0, poupança R$ 0, investimento R$ 0, passivos
 Conta corrente criada em 01/02 com saldo informado de R$ 5.000; o histórico anterior não será importado neste exercício. Em fevereiro entram R$ 200 de receita e saem R$ 80 de despesa. O saldo calculável desde o ponto de partida é `5.000 + 200 − 80 = R$ 5.120`. O saldo inicial de R$ 5.000 **não é receita de fevereiro**.
 
 Se o extrato externo mostrar R$ 5.110, há divergência de R$ 10. Pela ADR-016, o sistema expõe a divergência para revisão; não cria ajuste automático. Persistência de snapshots e semântica de um ajuste aprovado ainda estão pendentes.
+
+**Saldo negativo assinado (ADR-028):** em cenário independente, marco de R$ 100 no início de 01/02 e despesa direta de R$ 130 em 02/02 produzem R$ −30 no fim de 02/02 e R$ 130 de despesa. Uma entrada de R$ 50 em 03/02 leva a R$ 20, mas a consulta de 02/02 continua R$ −30 com alerta. O Prumo não bloqueia o débito só por esse resultado nem cria R$ 30 de empréstimo, encargo ou ajuste. Com uma transferência confirmada de R$ 150 entre A = R$ 100 e B = R$ 50, A = R$ −50 e B = R$ 200 somam R$ 150 sem receita ou despesa; se só a saída for comprovada, o patrimônio afetado permanece incompleto pela ADR-007.
 
 **Movimento anterior ao marco (ADR-016):** em outro cenário, a conta começa em 01/02 com R$ 5.000 e aparece entrada de R$ 200 em 31/01. Ela fica pendente e não altera o saldo derivado. Para incluí-la, a pessoa informa e justifica um novo marco anterior, por exemplo R$ 4.800 em 30/01, com trilha da correção. Na ausência de outros movimentos, 30/01 R$ 4.800 + 31/01 R$ 200 = 01/02 R$ 5.000. O Prumo não presume que o saldo anterior era R$ 4.800; esse valor precisa ser informado.
 

@@ -12,7 +12,7 @@
 2. O sistema registra o marco datado; não cria receita por esse valor (ADR-016).
 3. A consulta de saldo após o marco soma somente os movimentos conhecidos a partir dele.
 
-**Aceite:** marco de R$ 5.000, entrada de R$ 200 e saída de R$ 80 produzem R$ 5.120; receita do período é apenas R$ 200. Se uma fonte externa informa R$ 5.110 na mesma data, a divergência de R$ 10 aparece para revisão e não gera ajuste automático. Edição do marco e movimentos anteriores continuam pendentes.
+**Aceite:** marco de R$ 5.000, entrada de R$ 200 e saída de R$ 80 produzem R$ 5.120; receita do período é apenas R$ 200. Se uma fonte externa informa R$ 5.110 na mesma data, a divergência de R$ 10 aparece para revisão e não gera ajuste automático. Correção do marco e movimento anterior seguem a ADR-016; representação física da pendência continua aberta.
 
 ## Registrar receita recebida ou despesa à vista (UC-003)
 
@@ -20,7 +20,7 @@
 2. O registro cria um evento `Transaction` e um movimento vinculado nessa conta: `+valor` para receita recebida, `−valor` para despesa paga (ADR-017).
 3. O evento entra uma vez no indicador econômico aplicável; a classificação não é inferida apenas do sinal do movimento. Receita recebida entra no mês em que o dinheiro chega; despesa paga diretamente entra no mês em que sai da conta (ADR-017).
 
-**Aceite candidato:** partindo de R$ 0, salário de R$ 3.000 e compra paga diretamente de R$ 80 resultam em saldo R$ 2.920, receita R$ 3.000 e despesa R$ 80 para os eventos. Se o salário se refere a maio e chega em junho, os R$ 3.000 são receita de junho. Se a compra ocorre em 31/05 e o débito da conta em 01/06, os R$ 80 são despesa de junho. Conta de outro household é rejeitada, sem efeito parcial. Data efetiva em casos excepcionais, despesa ainda não paga e receita a receber exigem regra própria antes da implementação.
+**Aceite candidato:** partindo de R$ 0, salário de R$ 3.000 e compra paga diretamente de R$ 80 resultam em saldo R$ 2.920, receita R$ 3.000 e despesa R$ 80 para os eventos. Se o salário se refere a maio e chega em junho, os R$ 3.000 são receita de junho. Se a compra ocorre em 31/05 e o débito da conta em 01/06, os R$ 80 são despesa de junho. Conta de outro household é rejeitada, sem efeito parcial. Datas divergentes ou incompletas da fonte seguem a ADR-025; despesa ainda não paga e receita a receber exigem regra própria.
 
 **Reembolso de compra paga diretamente (ADR-017):** compra de R$ 80 em Mercado debitada em maio, seguida por reembolso de R$ 20 recebido em junho. Registrar novo evento vinculado à compra e movimento de entrada de R$ 20. Maio mantém R$ 80 de despesa em Mercado e orçamento inalterado por causa do recebimento; junho recebe efeito de R$ −20 sobre despesa de Mercado e nenhuma receita por esse reembolso. A soma líquida dos dois eventos é R$ 60. Com orçamento de Mercado em junho de R$ 200 e consumo anterior de R$ 60 nessa categoria, o reembolso libera R$ 20 e deixa R$ 160 disponíveis. Reembolsos parciais acumulados não superam R$ 80: após R$ 50 recebidos, outros R$ 30 são aceitos, mas R$ 31 não pode ser vinculado como reembolso da compra.
 
@@ -36,7 +36,7 @@
 2. Um evento de transferência e seus dois movimentos `−valor`/`+valor` são confirmados juntos (ADR-007).
 3. Cada conta mostra seu movimento vinculado ao mesmo evento; relatório do household mantém receita e despesa inalteradas.
 
-**Aceite:** A = R$ 2.000, B = R$ 500, transferência de R$ 300 → A = R$ 1.700, B = R$ 800 e total R$ 2.500. Falha ao registrar um lado desfaz tudo. Idempotência, concorrência e estorno ainda exigem decisão.
+**Aceite:** A = R$ 2.000, B = R$ 500, transferência de R$ 300 → A = R$ 1.700, B = R$ 800 e total R$ 2.500. Falha ao registrar um lado desfaz tudo. Retificação e cancelamento do fato seguem a ADR-026; idempotência e concorrência dos comandos e revisões seguem a ADR-027.
 
 ## Registrar compra de consumo no cartão e pagar fatura (UC-005/BR-002)
 
@@ -97,4 +97,4 @@
 
 ## Limite comum e próximos refinamentos
 
-Em todos os casos, a autorização para o household e para cada recurso é resolvida no backend; IDs enviados pelo cliente não provam acesso. A futura especificação de comandos deve definir rejeição sem efeito parcial, idempotência e como registrar correções rastreáveis. Importação e reconciliação precisam referenciar evento e efeito de saldo sem gerar um segundo fato econômico. Estas regras não autorizam ERD ou contrato de API antes das decisões pendentes.
+Em todos os casos, a autorização para o household e para cada recurso é resolvida no backend; IDs enviados pelo cliente não provam acesso. A ADR-026 define correções rastreáveis no primeiro fluxo; a ADR-027 define idempotência e concorrência dos seus comandos e revisões. Importação e reconciliação precisam referenciar evento e efeito de saldo sem gerar um segundo fato econômico. Estas regras não autorizam ERD ou contrato de API antes das decisões pendentes.

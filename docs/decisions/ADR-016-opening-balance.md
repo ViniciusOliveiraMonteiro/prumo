@@ -100,7 +100,7 @@ Alternativa considerada: usar a data do registro como data do saldo e dos indica
 
 Exemplo: entrada efetiva de R$ 200 em 01/02, registrada em 05/02. Com marco de R$ 5.000 no início de 01/02, o saldo no fim de 01/02 é R$ 5.200 e a receita pertence a fevereiro; 05/02 permanece na trilha como data do registro, sem segunda entrada.
 
-A ADR-025 define como estabelecer a data efetiva quando a fonte mostra datas diferentes ou incompletas, preservando as alegações e a revisão sem duplicar movimento. Permanecem pendentes: distinção operacional de horário confiável, interpretação de rótulos por formato, forma física da pendência, correção/cancelamento de movimentos e semântica de um ajuste de reconciliação aprovado.
+A ADR-025 define como estabelecer a data efetiva quando a fonte mostra datas diferentes ou incompletas, preservando as alegações e a revisão sem duplicar movimento. A ADR-026 define correção/cancelamento dos movimentos delimitados do primeiro fluxo com versões auditáveis e recálculo; correção do próprio marco segue esta ADR. Permanecem pendentes: distinção operacional de horário confiável, interpretação de rótulos por formato, forma física da pendência, outros tipos de movimento e semântica de um ajuste de reconciliação aprovado.
 
 ## Consequências
 

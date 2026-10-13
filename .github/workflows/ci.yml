@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      PRUMO_DATABASE_URL: postgres://prumo_migrator:${{ github.run_id }}@127.0.0.1:5432/prumo_dev
+    services:
+      postgres:
+        image: postgres:18.6
+        env:
+          POSTGRES_DB: prumo_dev
+          POSTGRES_USER: prumo_migrator
+          POSTGRES_PASSWORD: ${{ github.run_id }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prumo_migrator -d prumo_dev"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@v3
+        with:
+          runtime: node@24.21.0
+          require-lockfile: true
+          cache: true
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter prumo-api test:e2e
+      - run: pnpm --filter prumo-api build
+      - run: pnpm --filter prumo-api db:migrate
+      - run: pnpm --filter prumo-api test:db
+      - run: pnpm contract:check
+      - run: pnpm build

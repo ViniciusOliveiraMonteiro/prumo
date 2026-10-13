@@ -81,7 +81,7 @@ Alternativas consideradas: tomar R$ 2.200 como patrimônio final sugeriria perda
 
 ## Pendências
 
-A ADR-025 define o tratamento conceitual de datas divergentes ou incompletas na fonte para cada movimento de conta. Ainda definir estrutura física e transição do débito em revisão, chegada anterior à saída ou correção posterior das datas, interpretação por formato, política de saldo negativo, idempotência de comandos, concorrência, reversão/correção e transferências entre households. Isolamento por RLS versus filtros de aplicação segue em ADR própria. Nenhuma dessas pendências foi aprovada por esta ADR.
+A ADR-025 define o tratamento conceitual de datas divergentes ou incompletas na fonte para cada movimento de conta. A ADR-026 define a retificação de transferência confirmada como revisão íntegra do par e a passagem ao débito em revisão se a chegada for desmentida. A ADR-027 define idempotência e concorrência para comandos e revisões do primeiro fluxo. A ADR-028 permite saldo negativo na origem com valor assinado e alerta, sem criar despesa ou passivo automático. A ADR-029 define a baseline de isolamento entre households; RLS ainda depende de laboratório com a stack escolhida. Ainda definir estrutura física da transição e do controle de concorrência, chegada anterior à saída, interpretação por formato, correção de tipo econômico e transferências entre households. Nenhuma dessas pendências foi aprovada por esta ADR.
 
 ## Gatilhos para revisitar
 

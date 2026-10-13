@@ -31,7 +31,7 @@ Se a fonte trouxer somente mês, intervalo, uma data ilegível ou datas com pap�
 
 ## Consequências e pendências
 
-A decisão dá uma regra verificável ao primeiro fluxo manual e evita transformar datas incompletas em fatos precisos. A revisão precisa mostrar o efeito contestado e a alegação nova sem contá-los duas vezes. Permanecem pendentes: critérios por formato para reconhecer rótulos e correspondência entre linhas; horário confiável e fuso quando houver timestamps; retificação de valor, conta, tipo ou cancelamento; idempotência, concorrência e estrutura física da pendência. Nenhum desses pontos é aprovado por esta ADR.
+A decisão dá uma regra verificável ao primeiro fluxo manual e evita transformar datas incompletas em fatos precisos. A revisão precisa mostrar o efeito contestado e a alegação nova sem contá-los duas vezes. A ADR-026 define retificação de valor, conta, data e cancelamento para os eventos delimitados do primeiro fluxo; a ADR-027 define idempotência e concorrência de seus comandos e revisões. Permanecem pendentes: critérios por formato para reconhecer rótulos e correspondência entre linhas; horário confiável e fuso quando houver timestamps; correção de tipo econômico e outros eventos; mecanismo físico de concorrência e estrutura da pendência. Nenhum desses pontos é aprovado por esta ADR.
 
 ## Conceitos para estudo
 

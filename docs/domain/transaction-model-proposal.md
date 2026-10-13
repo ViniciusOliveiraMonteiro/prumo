@@ -43,8 +43,8 @@ As duas linhas intermediárias da tabela são etapas de gravação do exemplo co
 ## Limites desta proposta
 
 - O efeito de compra no cartão, fatura e pagamento sobre movimentos de conta e passivo precisa ser desenhado em conjunto com a ADR-008; não criar entidades apenas para caber neste exemplo.
-- Política de saldo negativo, comprovação de datas informadas, transição física da saída em revisão, transferência entre households, reversão, idempotência e concorrência seguem pendentes. Com só a saída comprovada, a ADR-007 mostra subtotal de contas e débito pendente separados, com patrimônio afetado incompleto.
-- O isolamento do household precisa ser imposto no backend e testado; a escolha entre filtros de aplicação e RLS continua em aberto.
+- Interpretação de fontes por formato, transição física da saída em revisão e transferência entre households seguem pendentes. A ADR-025 define a data efetiva com fonte divergente ou incompleta; a ADR-026 define retificação/cancelamento no primeiro fluxo; a ADR-027 define idempotência e concorrência de seus comandos e revisões; a ADR-028 permite saldo negativo de conta com alerta. Com só a saída comprovada, a ADR-007 mostra subtotal de contas e débito pendente separados, com patrimônio afetado incompleto.
+- A ADR-029 define a baseline de isolamento por contexto autorizado, escopo de consultas/vínculos e testes A/B. A adoção de RLS continua em aberto até o laboratório com a stack escolhida.
 - Não há decisão sobre ORM, SQL, chaves ou formato da API.
 
 ## Próximo trabalho
