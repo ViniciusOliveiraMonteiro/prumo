@@ -29,7 +29,7 @@ Estado inicial: conta A R$ 2.000; conta B R$ 500. Transferência interna de R$ 3
 | Movimento de destino | 0 | +300 | — | — | — |
 | Após confirmação conjunta | 1.700 | 800 | 2.500 | 0 | 0 |
 
-As duas linhas intermediárias não são estados visíveis após confirmação. Se a gravação de qualquer uma falhar, nenhuma deve persistir. A soma dos movimentos da transferência é zero; ambos usam centavos inteiros de BRL (ADR-006). Os saldos posteriores são derivados dos marcos iniciais e movimentos (ADR-016).
+As duas linhas intermediárias da tabela são etapas de gravação do exemplo com efeitos na mesma data, não estados visíveis após confirmação. Se a gravação de qualquer uma falhar, nenhuma deve persistir. A soma dos movimentos da transferência é zero; ambos usam centavos inteiros de BRL (ADR-006). Os saldos posteriores são derivados dos marcos iniciais e movimentos (ADR-016). Se os efeitos tiverem datas efetivas diferentes, a ADR-007 os aplica em suas respectivas contas nesses dias; a soma das contas entre eles cai temporariamente, e um valor em trânsito separado conserva o consolidado patrimonial do par confirmado.
 
 ## Invariantes do núcleo e requisitos pendentes
 
@@ -38,15 +38,15 @@ As duas linhas intermediárias não são estados visíveis após confirmação. 
 3. Os dois efeitos são confirmados em uma transação de banco de dados; falha em qualquer efeito desfaz o conjunto.
 4. Transferência entre contas do mesmo household não entra nos totais de receita e despesa.
 5. Uma transferência não pode ser editada em apenas um lado. Correção e cancelamento devem preservar o vínculo e a rastreabilidade.
-6. **Pendente:** definir quando registros de extratos podem ser ligados à transferência, inclusive critério de correspondência, revisão e deduplicação.
+6. Saída comprovada ainda sem chegada reduz a conta de origem e fica em revisão, sem despesa ou transferência confirmada. Vincular depois o par não repete o débito (ADR-007). **Pendente:** critério de correspondência de registros de extratos, transição física, revisão e deduplicação.
 
 ## Limites desta proposta
 
 - O efeito de compra no cartão, fatura e pagamento sobre movimentos de conta e passivo precisa ser desenhado em conjunto com a ADR-008; não criar entidades apenas para caber neste exemplo.
-- Política de saldo negativo, data efetiva versus data informada, transferência entre households, reversão, idempotência e concorrência seguem pendentes.
+- Política de saldo negativo, comprovação de datas informadas, transição física da saída em revisão, transferência entre households, reversão, idempotência e concorrência seguem pendentes. Com só a saída comprovada, a ADR-007 mostra subtotal de contas e débito pendente separados, com patrimônio afetado incompleto.
 - O isolamento do household precisa ser imposto no backend e testado; a escolha entre filtros de aplicação e RLS continua em aberto.
 - Não há decisão sobre ORM, SQL, chaves ou formato da API.
 
 ## Próximo trabalho
 
-Detalhar os eventos de receita/despesa e os efeitos de cartão no modelo, sem confundir despesa econômica com movimento de conta. Depois, desenhar o ERD inicial e a estratégia de isolamento de households, respeitando as decisões e pendências das ADRs.
+O esboço de receita/despesa e dos efeitos de cartão está em `event-effects-proposal.md`, com casos observáveis em `priority-use-cases.md`. A ADR-017 aprovou classificação pelo evento para receita recebida e despesa de consumo à vista e obrigação própria do cartão vinculada aos eventos. Datas econômicas, demais eventos e estrutura física seguem pendentes antes do ERD inicial. A estratégia de isolamento de households também permanece pendente.

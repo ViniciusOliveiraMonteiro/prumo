@@ -131,8 +131,9 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Monorepo | DEFINIDO | Um repositório na pasta pai, com `prumo-web/` e `prumo-api/`; ver ADR-001. |
 | Money no MVP | DEFINIDO | BRL em centavos inteiros com moeda explícita, sem conversão cambial; ver ADR-006. |
 | Saldo de conta | DEFINIDO para o núcleo | Marco inicial datado e saldo posterior derivado; reconciliação mostra diferenças; ver ADR-016. |
-| Cartão no relatório principal | DEFINIDO para compras de consumo | Despesa integral na data da compra; fatura, parcelas e caixa em visão separada; ver ADR-008. |
+| Cartão no relatório principal | DEFINIDO para compras de consumo | Despesa integral na data da compra; atribuição automática ao ciclo pelo fechamento configurado, corrigível sem alterar o mês da despesa; pagamento parcial admitido no MVP; ver ADR-008. |
 | Transaction/transferência | DEFINIDO para o núcleo | `Transaction` é evento do household; transferência interna tem dois movimentos vinculados, opostos e atômicos; ver ADR-007. |
+| Receita/despesa comum e passivo do cartão | DEFINIDO para o núcleo | Classificação econômica pelo evento; receita recebida entra no mês em que o dinheiro chega; despesa de consumo paga diretamente entra no mês em que o dinheiro sai da conta; obrigação própria do cartão vinculada aos eventos; ver ADR-017. Operações não liquidadas e estrutura física pendentes. |
 | Cache | NÃO DEFINIDO | Redis apenas quando existir caso real. |
 | Jobs | HIPÓTESE | BullMQ + Redis para imports, recalculações e tarefas assíncronas. |
 | Event streaming | NÃO DEFINIDO | Kafka não entra inicialmente; avaliar somente mediante lacuna concreta. |
@@ -338,15 +339,21 @@ Origem ou destino financeiro: conta corrente, poupança, carteira, dinheiro, con
 
 ### Transaction
 
-Evento financeiro registrado para um household. Seus efeitos sobre saldos ficam em movimentos vinculados; para transferência interna são exatamente dois movimentos opostos, conforme ADR-007. A estrutura física ainda não foi definida.
+Evento financeiro registrado para um household. Seus efeitos sobre saldos de contas ficam em movimentos vinculados; para transferência interna são exatamente dois movimentos opostos, conforme ADR-007. Receita/despesa comum é classificada pelo evento, e a obrigação do cartão é própria e vinculada aos eventos (ADR-017). A estrutura física ainda não foi definida.
 
 ### Expense
 
 Saída econômica atribuível ao household.
 
+**DEFINIDO para consumo pago diretamente por conta:** entra no relatório principal no mês em que o dinheiro sai da conta, mesmo que a compra tenha ocorrido no mês anterior (ADR-017). Compra de consumo no cartão segue a data da compra (ADR-008); seu pagamento não gera segunda despesa.
+
 ### Income
 
 Entrada econômica atribuível ao household.
+
+**DEFINIDO para receita comum recebida:** entra no relatório principal no mês em que o dinheiro chega, mesmo quando se refere a trabalho de mês anterior (ADR-017). Datas divergentes ou incompletas de movimentos de conta seguem a ADR-025; receita ainda não recebida e interpretação de rótulos por formato exigem regra futura.
+
+**DEFINIDO para registro tardio de movimento de conta:** a data efetiva em que o dinheiro entrou ou saiu determina o saldo histórico e, para receita recebida ou despesa paga diretamente, o mês econômico. A data em que o fato foi registrado no Prumo permanece separada na trilha e não desloca o efeito nem o duplica (ADRs 016/017). A ADR-025 define o tratamento conceitual de datas divergentes ou incompletas; interpretação por formato continua pendente.
 
 ### Transfer
 
@@ -388,15 +395,17 @@ Antes do ERD, precisamos registrar invariantes.
 
 Transferir R$ 1.000 da conta corrente para uma conta de investimento não significa gastar R$ 1.000 nem ganhar R$ 1.000.
 
-**DEFINIDO no núcleo:** um evento `Transaction` de transferência liga dois movimentos de saldo que se anulam, gravados atomicamente e sem entrar em receita/despesa (ADR-007).
+**DEFINIDO no núcleo:** um evento `Transaction` de transferência confirmado liga dois movimentos de saldo que se anulam, com vínculo atômico e sem entrar em receita/despesa. Se a saída e a chegada ocorrerem em datas diferentes, cada conta reflete o movimento na própria data efetiva; a soma das contas diminui temporariamente entre elas e volta ao total após ambos os efeitos. Quando o par está confirmado, mostrar o valor em trânsito separadamente dos saldos das contas para conservar o consolidado patrimonial entre as datas, zerando-o na chegada, sem terceiro movimento de conta. Saída comprovada ainda sem chegada reduz o saldo da origem e fica visível em revisão, sem despesa, transferência confirmada ou posição em trânsito; mostrar subtotal das contas e débito pendente separados, com patrimônio afetado marcado incompleto, sem número definitivo. A confirmação posterior do par reutiliza o mesmo débito sem duplicá-lo (ADR-007). Correspondência operacional ainda exige regra.
 
 ## BR-002 - Pagamento de fatura não duplica despesa
 
 Para compras de consumo, o relatório principal reconhece a despesa integral na data da compra (ADR-008). O pagamento da fatura representa redução de caixa e passivo, não nova despesa dessas compras. Parcelas e fluxo de caixa são visões separadas.
 
+**DEFINIDO para o MVP:** pagamento parcial reduz caixa e passivo apenas pelo valor pago; o restante da obrigação continua em aberto. Entre faturas abertas do mesmo cartão com saldos individuais conhecidos, distribuir automaticamente o pagamento da mais antiga para a mais recente, pela data de fechamento, com correção rastreável sem alterar caixa, dívida total ou despesa. Se crédito aplicado não tiver fatura de destino confirmada e tornar incertos esses saldos, a ADR-023 mantém a alocação por fatura do pagamento em revisão, preservando a saída de caixa e a baixa da dívida total. Pagamento comum acima da dívida total aberta é recusado sem efeito parcial; se vier de importação, a linha fica sinalizada para revisão, sem gerar saldo credor automaticamente. Juros e tarifas são registrados somente pelo valor informado na fatura, como novos eventos de despesa que aumentam a obrigação no mês em que constam na fatura; o Prumo não calcula encargos automaticamente a partir do saldo aberto. Saldo credor futuro e categoria/correção dos encargos exigem regras próprias (ADR-008).
+
 ## BR-003 - Valores monetários não usam ponto flutuante binário
 
-**DEFINIDO para o MVP:** valores monetários finais de conta, cartão e orçamento usam inteiros em centavos de BRL e carregam `currency = BRL` (ADR-006). Conversão entre moedas fica fora do MVP; cálculos intermediários com frações de centavo exigem precisão decimal exata e quantização documentada. Tipo SQL, limite máximo, formato da API e algoritmo de rateio ainda serão definidos. Ponto flutuante binário não representa dinheiro no domínio.
+**DEFINIDO para o MVP:** valores monetários finais de conta, cartão e orçamento usam inteiros em centavos de BRL e carregam `currency = BRL` (ADR-006). Conversão entre moedas fica fora do MVP; cálculos intermediários com frações de centavo exigem precisão decimal exata e quantização documentada. O rateio das compras parceladas no cartão segue a ADR-008; outros rateios, tipo SQL, limite máximo e formato da API ainda serão definidos. Ponto flutuante binário não representa dinheiro no domínio.
 
 ## BR-004 - Categoria é dado de negócio
 
@@ -450,7 +459,9 @@ Dados mínimos propostos:
 - saldo inicial e data de início;
 - visibilidade/estado.
 
-**DEFINIDO para saldo:** usar marco inicial datado e derivar os saldos seguintes dos movimentos conhecidos; reconciliação mostra diferenças sem ajuste automático (ADR-016). Estrutura de persistência permanece pendente.
+**DEFINIDO para saldo:** usar marco inicial no início da data informada e derivar o saldo dos movimentos conhecidos nessa data ou depois; reconciliação mostra diferenças sem ajuste automático. Movimento anterior ao marco fica pendente e só integra o histórico após a pessoa informar e justificar um marco anterior com saldo nessa data, preservando a trilha; o Prumo não presume o saldo anterior. Valor inicial errado pode ser corrigido após movimentos, com justificativa, trilha, recálculo dos saldos e revisão das divergências afetadas, sem criar receita, despesa ou transação. Data do marco informada cedo ou tarde demais pode ser corrigida para outra data com saldo informado nessa nova data, motivo e trilha, mesmo sem movimento anterior a incluir; movimentos que ficarem anteriores permanecem visíveis e pendentes, e os saldos são recalculados. Sem horário confiável, movimentos na mesma data são mostrados por sequência de registro estável e identificada, sem alegar cronologia real; o saldo final do dia independe da ordem. Consulta por data sem horário retorna o saldo ao fim do dia após todos os movimentos efetivos nessa data; antes do marco, mostra saldo não calculável e a data do marco, sem valor presumido (ADR-016). Distinção operacional entre datas dos movimentos e estrutura de persistência permanecem pendentes.
+
+**DEFINIDO para datas da fonte em movimentos de conta:** a ADR-025 usa o dia em que o saldo da conta foi efetivamente afetado, guarda separadamente datas de ordem/compra, compensação e registro, e mantém em revisão alegações conflitantes ou sem dia suficiente, sem fabricar data ou duplicar movimento. Registro manual identifica a data informada pela pessoa; conflito posterior preserva o último efeito sustentado como contestado até revisão. Correspondência por formato, horário confiável e retificação financeira continuam pendentes.
 
 ## UC-003 - Registrar transação manual
 
@@ -549,14 +560,20 @@ Funcionalidades:
 - buscar;
 - criar;
 - editar;
-- dividir transação em categorias;
+- dividir transação em categorias (fora do MVP; possibilidade futura sem compromisso de implementação);
 - marcar transferência;
 - marcar reembolso;
 - anexar nota;
 - associar merchant;
 - visualizar origem do import.
 
-**NÃO DEFINIDO:** suporte a split transactions no MVP. Sugestão: projetar modelo compatível, implementar depois do núcleo.
+**DEFINIDO para reembolso de compra de consumo paga diretamente:** criar evento vinculado à compra original e movimento de entrada na conta quando o dinheiro voltar. O valor atribuído como reembolso reduz a despesa na **categoria da compra original** e libera disponibilidade no orçamento dessa categoria no mês do recebimento, sem ser receita e sem reescrever despesa ou orçamento do mês da compra pelo recebimento. Compra de R$ 80 em Mercado reembolsada em R$ 20 mantém os R$ 80 no mês da compra e registra R$ −20 em Mercado no mês do recebimento. Se a categoria original for corrigida depois para Farmácia, reclassificar a compra em seu mês e o mesmo reembolso no mês do recebimento para Farmácia, recalculando os orçamentos sem alterar valores, datas, saldos ou totais mensais. A soma dos reembolsos parciais vinculados não pode superar o valor original pago (ADR-017). Demais reembolsos de compra no cartão ainda exigem decisão.
+
+**DEFINIDO para entrada externa acima do saldo reembolsável de compra paga diretamente:** se a entrada de R$ 100 está comprovadamente ligada a compra ainda reembolsável em R$ 80, a conta aumenta R$ 100 uma vez; R$ 80 reduzem a despesa no mês do recebimento e R$ 20 ficam como entrada recebida sem classificação econômica definida para revisão. A parte excedente não vira receita automaticamente nem outro reembolso; a soma das partes deve igualar a entrada comprovada. Classificação posterior não repete o movimento de caixa. Sem vínculo confiável com a compra, a atribuição como reembolso fica em revisão; contrato físico e reconciliação dessa distribuição exigem detalhamento (ADR-017).
+
+**DEFINIDO para consumo líquido negativo por reembolso direto:** manter a despesa e o consumo negativos visíveis, limitar o disponível ao orçamento mensal configurado e mostrar a parte negativa excedente em separado. Com orçamento `B` e consumo líquido `C`, disponível = `B − max(C, 0)` e, se `C < 0`, excedente = `−C`. Esse valor informativo não cria outra entrada na conta nem orçamento transportado automaticamente a outro mês. A regra acompanha o critério para estorno no cartão da ADR-018 (ADR-017).
+
+**DEFINIDO para o MVP:** cada compra de consumo recebe uma única categoria, sem divisão do valor entre categorias. Uma compra de R$ 120 no mercado, mesmo com alimentos e itens de higiene, pode ser classificada integralmente como **Mercado**; fast food pode receber outra categoria. A escolha ou correção da categoria é do usuário; este exemplo não define a lista completa de categorias nem classificação automática pelo estabelecimento. Divisão por itens ou categorias fica fora do MVP, sem compromisso de implementação futura.
 
 ## 11.3 Categorias
 
@@ -590,7 +607,9 @@ Permitir metas por:
 - mês;
 - eventualmente recorrência.
 
-Decidir se orçamento é teto rígido, objetivo visual ou ambos.
+**DEFINIDO para o MVP:** orçamento é referência visual com alerta, sem bloquear registro de compra que ultrapasse o valor planejado. Mostrar o consumo e o excedente ao usuário. Regras de categorias e eventuais alertas adicionais ainda exigem detalhamento.
+
+**DEFINIDO para compra de consumo no cartão:** o valor integral consome o orçamento mensal do mês da compra, acompanhando a despesa reconhecida. Parcelas em faturas futuras e pagamento não consomem o mesmo orçamento novamente; compromissos e caixa aparecem em visão separada (ADR-008).
 
 ## 11.5 Recorrências
 
@@ -619,7 +638,55 @@ Precisamos modelar:
 
 **DEFINIDO para reconhecimento:** compra de consumo entra integralmente no relatório principal na data da compra; parcelas/faturas são compromissos e saídas de caixa em visão separada, sem duplicar despesa (ADR-008).
 
-**Status: NÃO DEFINIDO** para nível de fidelidade da fatura no MVP, incluindo ciclo, pagamento parcial, juros, tarifas e estornos após pagamento.
+**DEFINIDO para rateio e ciclos das parcelas:** dividir o total da compra em centavos inteiros igualmente entre as parcelas e atribuir os centavos restantes às primeiras. Em compra positiva, a quantidade de parcelas deve ser positiva e não pode superar o total em centavos; rejeitar parcelamento que geraria R$ 0,00 em alguma parcela. A primeira parcela entra no ciclo atribuído à compra; as demais, nos ciclos mensais consecutivos. O usuário pode corrigir valores e ciclos para refletir o emissor, preservando parcelas positivas, a soma, o vínculo com a compra, o histórico da correção e a despesa original (ADR-008).
+
+**DEFINIDO para pagamento parcial:** o MVP permite registrar valor pago inferior à obrigação; reduz caixa e dívida por esse valor, sem repetir a despesa da compra (ADR-008).
+
+**DEFINIDO para encargos:** juros e tarifas informados na fatura entram como novos eventos de despesa no mês dessa fatura e aumentam a dívida; não há cálculo automático de encargos sobre o saldo em aberto (ADR-008).
+
+**DEFINIDO para atribuição de compras:** usar automaticamente a data da compra e o dia de fechamento configurado do cartão para escolher o ciclo da fatura. Quando o dia configurado não existir no mês, usar o último dia desse mês como fechamento previsto (dia 31 → 28 ou 29 de fevereiro). Compra no próprio dia de fechamento previsto ou depois dele entra no ciclo seguinte, pois o horário de corte do emissor não é conhecido. O usuário pode corrigir a atribuição quando a fatura real divergir, preservando rastreabilidade e sem alterar o mês da despesa (ADR-008).
+
+**DEFINIDO para vencimento previsto:** configurar um dia de vencimento por cartão. Em cada mês candidato, se esse dia não existir, usar o último dia do mês; escolher a primeira data candidata estritamente após o fechamento previsto e permitir correção rastreável quando o emissor informar outra data (ADR-008). Fechamento em 05/02 com dia de vencimento 12 prevê 12/02; com dia 3 prevê 03/03. Fechamento em 31/01 com dia de vencimento 31 prevê 28 ou 29/02.
+
+**DEFINIDO para reconciliação do cartão:** comparar dívida calculada e posição do emissor em data de corte e escopo compatíveis; mostrar valores, diferença e fontes para revisão. Divergência sozinha não cria encargo, crédito ou ajuste automático. Sem causa identificada, ela permanece visível e o MVP não oferece ajuste manual genérico para igualar os saldos. A causa identificada pode ser registrada como evento rastreável (ADR-008).
+
+**DEFINIDO para estorno de compra de consumo no cartão ainda não paga:** quando o emissor confirma e aplica o crédito à obrigação aberta da própria compra, um novo evento vinculado reduz dívida e despesa no mês da aplicação e libera o orçamento desse mês. A compra e o orçamento de seu mês original permanecem registrados; não há movimento de conta nem receita. A soma dos estornos não supera o valor original nem a obrigação aberta associada. Crédito pendente não produz efeito; compensação parcial em ciclo futuro e valor excedente ainda exigem regras complementares (ADR-018). O caso após pagamento sem dívida aberta segue a ADR-019.
+
+**DEFINIDO para o período de crédito destinado a ciclo futuro:** após confirmação pelo emissor, mostrar o crédito a utilizar sem diminuir a fatura atual, a dívida exigível, a despesa ou o orçamento. Reconhecer a redução de despesa e a liberação do orçamento somente no mês em que o emissor aplicar o crédito. Aplicação integral ou parcial a obrigação futura identificada após pagamento da compra original e atribuição manual provisória entre faturas sem destino externo informado seguem a ADR-019; detalhes de interface e importação da revisão ainda estão pendentes (ADR-018/019).
+
+**DEFINIDO para crédito confirmado para uso futuro acima do valor estornável:** se a compra original já paga ainda permite estorno de R$ 80 e o emissor confirma crédito ligado a ela de R$ 100 para ciclo futuro, mostrar R$ 80 elegíveis como estorno a utilizar e R$ 20 confirmados a utilizar sem classificação econômica definida, em revisão. As partes somam R$ 100 da mesma fonte. A confirmação não reduz dívida, despesa ou orçamento, não movimenta conta nem cria saldo credor patrimonial. A aplicação integral segue a separação do crédito aplicado abaixo. Em aplicação parcial sem discriminação das partes, consumir primeiro o valor elegível por inferência marcada e corrigível: se R$ 50 forem aplicados, reduzir dívida e despesa em R$ 50 no mês da aplicação, restando R$ 30 elegíveis e R$ 20 sem classificação a utilizar. Prova posterior de outra distribuição corrige a despesa e o orçamento do mês e os saldos a utilizar, preservando a baixa total, o caixa e a trilha (ADR-018/019).
+
+**DEFINIDO para estorno no cartão após pagamento sem dívida aberta:** mostrar crédito confirmado a utilizar separadamente, sem criar saldo credor patrimonial nem reduzir despesa e orçamento na confirmação. Se o emissor aplicar todo ou parte ao mesmo cartão, reduzir a dívida total pelo valor efetivamente aplicado e a despesa apenas pela parte elegível como estorno, no mês da aplicação; a parte elegível restante fica a utilizar. Se devolver à conta, registrar entrada na conta e redução da despesa no mês do recebimento, sem receita. Quando o emissor confirma o total aplicado sem detalhar a origem, atribuir a parte elegível entre créditos confirmados do mais antigo para o mais recente. Empate na data de confirmação usa a sequência de registro persistida no Prumo, marcada como inferência corrigível; novo crédito importado depois não redistribui silenciosamente aplicações anteriores. A correção preserva o total aplicado e pode reclassificar efeitos por categoria no mês da aplicação. Se não identificar a fatura de destino, reduzir a dívida total e permitir atribuição manual provisória entre faturas abertas do mesmo cartão e household. Mostrar saldos individuais estimados, separados do total confirmado e sem recomendar pagamento com base neles; confirmar ou corrigir quando o emissor informar o destino, preservando trilha e total. A compra original mantém seu mês. Detalhes de interface e reconciliação do crédito ainda não utilizado seguem pendentes (ADR-019).
+
+**DEFINIDO para crédito do emissor aplicado acima do valor estornável da compra:** com compra original ainda estornável em R$ 80, outra dívida no cartão de R$ 20 e crédito de R$ 100 comprovadamente aplicado, reduzir a dívida total em R$ 100 uma vez. Somente R$ 80 são estorno vinculado à compra e reduzem a despesa e o orçamento no mês da aplicação; R$ 20 são crédito aplicado sem classificação econômica definida, para revisão, sem receita ou segunda redução de despesa presumidas. As partes conservam o total aplicado, sem movimento de conta ou saldo credor inferido. Atribuição entre faturas sem destino comprovado continua provisória; a revisão manual da parcela excedente segue a decisão abaixo (ADR-018/019).
+
+**DEFINIDO para revisão do excedente já aplicado no cartão:** quando o emissor confirmar a aplicação, mas não explicar a natureza econômica dos R$ 20 excedentes, permitir que usuário autorizado do household os classifique manualmente com justificativa obrigatória. Os tipos admitidos são **receita por crédito aplicado à dívida**, sem entrada em conta nem liberação de orçamento de despesa, e **redução de outra despesa documentada**, vinculada a evento do mesmo household e limitada ao valor ainda redutível desse evento. É possível classificar parcialmente e manter o restante pendente. Manter fonte, valor, classificação escolhida e histórico de correções, identificando a escolha como manual. O efeito econômico ou orçamentário pertence ao mês da aplicação efetiva do crédito, ainda que a revisão ocorra depois; recalcular esse mês com trilha e manter a data da revisão. Correção posterior da data de aplicação move o mesmo efeito para o mês correto. Não presumir receita nem outro estorno, não aumentar o limite estornável da compra e não repetir a baixa da dívida ou criar movimento de conta. A soma de estorno da compra original, redução de outras despesas, receita por baixa da dívida e parte ainda sem classificação conserva o total aplicado; a atribuição entre faturas reconcilia separadamente o mesmo total (ADR-019/020).
+
+O estudo `docs/domain/card-credit-reconciliation-proposal.md` demonstra a conservação do crédito confirmado, da aplicação, das partes econômicas e do destino entre faturas como dimensões distintas. A ADR-021 **define** compensação explícita ou fatura fechada com abatimento demonstrável como prova da aplicação; diferença isolada de saldo não basta. Colisões de linhas externas sem correspondência confiável ficam em revisão. O fluxo de conflitos, a correspondência por formato e a origem de excedentes em aplicação agregada continuam pendentes antes do ERD; o estudo não define estrutura física.
+
+A ADR-022 **define** manter o último efeito sustentado por fonte como contestado quando um documento novo divergir no valor, até resolução rastreável; também detalha a revisão da atribuição provisória entre faturas. A baixa total comprovada e os saldos individuais estimados seguem as decisões já aprovadas nas ADR-019/021. Pagamentos posteriores e fontes conflitantes ainda exigem validação no fluxo de revisão antes do ERD.
+
+A ADR-023 **define** uma exceção à alocação automática da ADR-008: se crédito aplicado ao cartão não tiver fatura de destino confirmada e isso tornar incertos os saldos individuais, o pagamento comprovado baixa caixa e dívida total, mas sua distribuição entre faturas fica em revisão. O exemplo de faturas R$ 70/R$ 100, crédito R$ 40 e pagamento R$ 50 mantém dívida total de R$ 80, com dois resultados individuais possíveis; não apresentar nenhum como exigível confirmado antes da revisão.
+
+O estudo `docs/domain/multi-credit-payment-cycle-example.md` demonstra dois créditos e dois pagamentos no mesmo ciclo, além de correção posterior de valor: os totais de caixa, dívida, crédito a utilizar e efeitos econômicos se conservam. A ADR-024 **define** distinguir saldo individual confirmado pelo emissor, calculado pela ordem da ADR-008 e estimado pelo usuário; sem atribuição necessária, não há saldo individual pontual. Conflitos seguem a ADR-022. A estrutura física dessa origem ainda precisa ser detalhada no ERD.
+
+A proposta `docs/domain/card-credit-conceptual-erd-proposal.md` relaciona evento, movimento de conta, efeito na dívida, crédito confirmado, partes econômicas, atribuições entre créditos e faturas, evidências e revisões. Suas invariantes I1–I7 devem ser verificadas antes de escolher esquema físico. Correspondência de fontes por formato, concorrência de revisões, origem do excedente agregado e estratégia técnica de isolamento do household continuam pendentes; o diagrama não aprova tabelas nem stack.
+
+A revisão conceitual de I1–I7 no mesmo documento cobre releitura identificada, fonte conflitante e correção de B de R$ 20 para R$ 15 sem segunda baixa. Ela distingue a primeira entrega de contas e transações das fases posteriores de cartão e importação: os contratos físicos e de segurança necessários a cada fluxo são definidos quando esse fluxo entrar no trabalho, mantendo as pendências restantes explícitas.
+
+**DEFINIDO para data estimada do crédito aplicado:** se a fatura confirmar aplicação mas não trouxer o dia do crédito, usar o fechamento da fatura como data estimada e identificá-la como tal. A data real posterior corrige o mesmo efeito nos relatórios, orçamento e posição histórica por data, sem criar outro estorno ou mudar a compra original. Crédito apenas confirmado a utilizar, sem prova de aplicação, não recebe data estimada de efeito (ADR-019).
+
+**DEFINIDO quando lançamento e compensação têm datas diferentes:** guardar ambas as datas e reconhecer redução de dívida, despesa e consumo do orçamento na data em que a compensação efetivamente reduz a obrigação, não na mera data do lançamento. Se o emissor comprovar posteriormente data efetiva anterior, corrigir a data do mesmo estorno e recalcular os meses e posições históricas afetados, sem duplicar baixa ou mudar saldo atual. Quando a aplicação está comprovada, mas o dia individual falta, vale a estimativa pelo fechamento acima (ADR-018/019).
+
+**DEFINIDO para categoria de estorno de compra com categoria única:** o efeito negativo da despesa usa a categoria da compra original no mês da aplicação do crédito ou do recebimento da devolução à conta. Esse mesmo valor libera o orçamento dessa categoria no mês do efeito. Uma compra futura que absorva o crédito conserva a própria categoria e a despesa integral; o crédito continua vinculado à compra antiga (ADR-018/019).
+
+**DEFINIDO somente como regra eventual para estorno de compra dividida entre categorias:** compras divididas estão fora do MVP. Se forem suportadas em fase futura, o estorno parcial exige atribuição informada pelo usuário à categoria ou às partes efetivamente afetadas, sem rateio proporcional presumido. Enquanto a atribuição faltar, a despesa total e a dívida ou conta refletem o crédito aplicado ou recebido no mês correto, mas a distribuição por categoria e a disponibilidade dos orçamentos dessas categorias ficam pendentes. A soma atribuída deve igualar o crédito efetivo sem superar o valor elegível de cada parte. Se a categoria de uma parte for corrigida depois, reclassificar essa parte no mês da compra e os estornos atribuídos a ela nos meses em que tiveram efeito; recalcular os orçamentos afetados, preservando valores, datas, totais, dívida, caixa e trilha (ADR-018/019).
+
+**DEFINIDO para correção posterior da categoria de compra com categoria única:** quando a categoria original for corrigida, reclassificar os estornos vinculados à categoria corrigida nos respectivos meses em que o crédito foi aplicado ou a devolução recebida. Recalcular os orçamentos dessas categorias nesses meses, preservando valor e data de cada efeito, totais mensais, caixa, dívida e trilha da correção. A compra original também recebe a correção de categoria em seu próprio mês, sem mudança de data; a categoria de compra futura que absorveu o crédito não muda (ADR-018/019).
+
+**DEFINIDO para orçamento com consumo líquido negativo por estorno:** preservar a despesa e o consumo negativo no mês do efeito, mas limitar o valor mostrado como disponível ao orçamento mensal configurado. Exibir o excedente de estornos em separado, apenas como informação; ele não vira verba adicional, saldo de caixa, crédito do emissor ainda a utilizar nem saldo transportado automaticamente para outro mês. Com orçamento `B` e consumo líquido `C`, disponível = `B − max(C, 0)` e, quando `C < 0`, excedente = `−C`. Novas despesas e correções recalculam esses valores (ADR-018/019).
+
+**Status: NÃO DEFINIDO** para os demais detalhes de fidelidade da fatura no MVP, incluindo calendário efetivo do emissor, saldo credor explícito futuro, escopo exato de posições externas, categoria/correção de encargos e detalhes de interface e correspondência de linhas importadas no fluxo de revisão do crédito sem destino entre faturas. Aplicação parcial, ordem entre créditos confirmados e atribuição manual provisória do destino seguem a ADR-019; outros casos ainda precisam de decisão. Eventual ajuste excepcional sem causa fica para fase futura.
 
 Sugestão: primeira versão suporta compras e parcelamentos, sem tentar replicar integralmente toda semântica de um emissor bancário.
 
@@ -2238,6 +2305,14 @@ ADR-013 Cloud/deployment strategy
 ADR-014 AI provider and data minimization
 ADR-015 Household isolation/RLS
 ADR-016 Opening balance and reconciliation (aceito para o núcleo; detalhes dos ajustes pendentes)
+ADR-017 Income/expense and card liability (aceito para o núcleo; estrutura física pendente)
+ADR-018 Card reversal before payment and future-cycle timing (aceito para os casos delimitados)
+ADR-019 Card reversal after payment without open debt (aceito para o caso delimitado)
+ADR-020 Applied card credit surplus classification (aceito para o excedente já aplicado)
+ADR-021 Card credit application evidence and matching (aceito para o limiar de prova; fluxo físico pendente)
+ADR-022 Card credit conflict review and invoice destination (aceito para valor conflitante e revisão do destino; detalhes físicos pendentes)
+ADR-023 Payment with unallocated card credit (aceito para o caso delimitado; múltiplos fatos em estudo)
+ADR-024 Card invoice balance provenance (aceita; estrutura física e interface pendentes)
 ```
 
 Kafka só merece ADR quando houver problema para avaliar.
@@ -2948,13 +3023,13 @@ A primeira discussão técnica deveria ser o **modelo financeiro central**, não
 O primeiro debate usa exemplos concretos. Já foram definidos o saldo inicial (ADR-016), a despesa de compra de consumo no cartão e o pagamento da fatura (ADR-008), a separação entre gasto integral e compromissos futuros, e a transferência como evento com dois movimentos vinculados (ADR-007). Restam perguntas:
 
 - como representar os outros tipos de evento `Transaction`?
-- reembolso altera transação original ou cria movimento relacionado?
-- como tratar estorno?
-- como tratar split?
+- como classificar definitivamente o excedente de entrada externa acima do saldo reembolsável e tratar demais reembolsos de compra no cartão? Para compra paga diretamente, novo evento e movimento vinculados, limite de reembolso e separação do excedente recebido para revisão seguem a ADR-017.
+- como tratar estornos fora do caso de crédito confirmado e aplicado à compra no cartão ainda não paga (ADR-018)?
+- se e quando revisitar divisão de compra entre categorias, fora do MVP?
 - como registrar e aprovar ajustes de reconciliação?
-- como detalhar ciclo, juros e pagamento parcial da fatura?
+- como tratar calendário efetivo do emissor, saldo credor futuro e categoria/correção de encargos?
 
-Money em centavos de BRL foi aprovado na ADR-006. A estrutura física, os demais tipos de `Transaction`, reembolso/estorno, split e detalhes da fatura continuam abertos.
+Money em centavos de BRL foi aprovado na ADR-006. A ADR-017 aprovou classificação econômica pelo evento para receita recebida e despesa de consumo paga diretamente, obrigação do cartão conceitualmente própria vinculada aos eventos, receita comum no mês em que o dinheiro chega, despesa comum paga diretamente no mês em que sai da conta e reembolso de compra paga diretamente como redução da despesa e liberação do orçamento no mês do recebimento, limitado ao valor original pago. Pagamento parcial, encargos informados, atribuição automática de compras ao ciclo configurado e divergência de reconciliação visível, sem ajuste automático ou manual genérico sem causa, estão no MVP (ADR-008). As ADR-018/019 cobrem os casos delimitados de estorno no cartão; uma categoria por compra foi aprovada para o MVP e divisão entre categorias ficou fora de seu escopo. Estrutura física, operações não liquidadas, demais tipos de `Transaction` e outros casos de reembolso e estorno continuam abertos. Os cenários em `docs/domain/financial-examples.md` exemplificam o núcleo aprovado e identificam esses limites.
 
 Se esse modelo estiver errado, toda arquitetura tecnicamente impecável apenas calculará números errados com grande eficiência.
 

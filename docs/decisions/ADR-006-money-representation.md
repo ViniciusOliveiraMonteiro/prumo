@@ -27,7 +27,7 @@ Suporta escalas diferentes e valores intermediários. Exige biblioteca decimal, 
 
 No MVP, valores monetários finais de conta, cartão e orçamento são quantias inteiras em **centavos de BRL**, acompanhadas de `currency = BRL`. Não há conversão entre moedas no MVP; uma operação que tente misturar moedas deve ser rejeitada. Taxas e cálculos intermediários que produzam frações de centavo exigem aritmética decimal exata e quantização em um ponto documentado antes de gerar um valor monetário final.
 
-O tipo técnico do inteiro, o limite máximo, o formato do contrato da API e o algoritmo de distribuição de restos ainda dependem de projeto e testes. A decisão não autoriza o uso de `Number` binário para representar dinheiro nem decide o tipo SQL antes da escolha do banco.
+O tipo técnico do inteiro, o limite máximo e o formato do contrato da API ainda dependem de projeto e testes. O rateio de **compras parceladas no cartão** foi definido posteriormente na ADR-008: dividir centavos inteiros de modo tão uniforme quanto possível e entregar centavos restantes às primeiras parcelas. Rateio para outros usos ainda requer regra própria. A decisão não autoriza o uso de `Number` binário para representar dinheiro nem decide o tipo SQL antes da escolha do banco.
 
 ## Consequências
 

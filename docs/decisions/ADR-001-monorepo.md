@@ -11,6 +11,8 @@ O Plano Mestre considerava um monorepo como hipótese. O Codex trabalha na pasta
 
 Usar um único repositório Git na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos. Instruções do Codex e documentos compartilhados ficam no mesmo repositório. A estrutura e o Git da raiz foram criados; `main` foi publicada no `origin`. O acesso remoto usa um socket SSH explícito nesta sessão.
 
+O repositório Prumo reside em `/home/vinicius/workspace/prumo/`. O diretório `/home/vinicius/workspace/` destina-se a este e futuros projetos. A montagem somente leitura do antigo `.git` no diretório `workspace/` ainda precisa ser retirada do ambiente para que a pasta pai deixe de ser reconhecida como repositório Git.
+
 ## Alternativa considerada
 
 Dois repositórios independentes dariam históricos e pipelines separados. O monorepo escolhido facilita mudanças atômicas nos dois lados, validação integrada e versionamento conjunto de contratos e documentos.
