@@ -16,6 +16,8 @@ Os exemplos deste caderno servem ao aprendizado. Regras de produto e domínio v�
 
 # Trilha de Estudos - Backend
 
+**No Plano de Estudos:** [fase A](PLANO_DE_ESTUDOS_APLICADO.md#fase-a---antes-de-código-de-produto), [fase B](PLANO_DE_ESTUDOS_APLICADO.md#fase-b---bootstrap-de-engenharia), [fase C](PLANO_DE_ESTUDOS_APLICADO.md#fase-c---identity--household), [fase D](PLANO_DE_ESTUDOS_APLICADO.md#fase-d---accounts--transactions), [fase F](PLANO_DE_ESTUDOS_APLICADO.md#fase-f---import-pipeline), [fase G](PLANO_DE_ESTUDOS_APLICADO.md#fase-g---analytics--insights-determinísticos).
+
 Objetivo: entender o ciclo completo de uma operação backend, do HTTP à persistência, e ser capaz de implementar regras de negócio sem transformar o framework em uma caixa-preta.
 
 | ID | Tema | Momento |
@@ -580,6 +582,8 @@ lang: pt-BR
 ---
 # Trilha de Estudos - Banco de Dados e Persistência
 
+**No Plano de Estudos:** [fase A](PLANO_DE_ESTUDOS_APLICADO.md#fase-a---antes-de-código-de-produto), [fase C](PLANO_DE_ESTUDOS_APLICADO.md#fase-c---identity--household), [fase D](PLANO_DE_ESTUDOS_APLICADO.md#fase-d---accounts--transactions), [fase E](PLANO_DE_ESTUDOS_APLICADO.md#fase-e---credit-cards--installments), [fase G](PLANO_DE_ESTUDOS_APLICADO.md#fase-g---analytics--insights-determinísticos), [fase I](PLANO_DE_ESTUDOS_APLICADO.md#fase-i---staging-e-produção).
+
 PostgreSQL é hipótese principal. A meta é aprender o comportamento do banco, não somente APIs do ORM.
 
 | ID | Tema |
@@ -1028,6 +1032,8 @@ Explicar lineage até transactions de origem.
 \newpage
 
 # Trilha 03 - Segurança e Privacidade
+
+**No Plano de Estudos:** [fase A](PLANO_DE_ESTUDOS_APLICADO.md#fase-a---antes-de-código-de-produto), [fase B](PLANO_DE_ESTUDOS_APLICADO.md#fase-b---bootstrap-de-engenharia), [fase C](PLANO_DE_ESTUDOS_APLICADO.md#fase-c---identity--household), [fase F](PLANO_DE_ESTUDOS_APLICADO.md#fase-f---import-pipeline), [fase H](PLANO_DE_ESTUDOS_APLICADO.md#fase-h---ia), [fase I](PLANO_DE_ESTUDOS_APLICADO.md#fase-i---staging-e-produção).
 
 Esta trilha existe porque o produto manipula histórico financeiro de pessoas reais. Segurança e privacidade são requisitos de arquitetura desde a Fase 0, não uma etapa de “hardening” no final.
 
@@ -2047,6 +2053,8 @@ Você consegue produzir uma pequena matriz de controles com evidências reais.
 
 # Trilha 04 - DevOps e Infraestrutura
 
+**No Plano de Estudos:** [fase B](PLANO_DE_ESTUDOS_APLICADO.md#fase-b---bootstrap-de-engenharia), [fase I](PLANO_DE_ESTUDOS_APLICADO.md#fase-i---staging-e-produção), [fase J](PLANO_DE_ESTUDOS_APLICADO.md#fase-j---evolução-e-escala).
+
 Esta trilha acompanha o projeto do ambiente local ao deploy reproduzível, observável e recuperável. A meta não é decorar ferramentas, mas entender o caminho completo de um commit até um processo saudável em produção.
 
 > Regra desta trilha: não marque um conceito como concluído apenas porque você leu sobre ele. Ele só está dominado quando você consegue explicar, aplicar no projeto, testar e justificar as escolhas e limitações.
@@ -2816,6 +2824,8 @@ Você consegue apontar top 3 drivers de custo.
 
 # Trilha 05 - Observabilidade e Operação
 
+**No Plano de Estudos:** [fase F](PLANO_DE_ESTUDOS_APLICADO.md#fase-f---import-pipeline), [fase G](PLANO_DE_ESTUDOS_APLICADO.md#fase-g---analytics--insights-determinísticos), [fase H](PLANO_DE_ESTUDOS_APLICADO.md#fase-h---ia), [fase I](PLANO_DE_ESTUDOS_APLICADO.md#fase-i---staging-e-produção).
+
 Observabilidade é a capacidade de inferir o estado interno do sistema a partir de sinais. Nesta aplicação ela também precisa obedecer à política de privacidade: depurar sem criar uma segunda base de dados financeiros dentro do provedor de logs.
 
 > Regra desta trilha: não marque um conceito como concluído apenas porque você leu sobre ele. Ele só está dominado quando você consegue explicar, aplicar no projeto, testar e justificar as escolhas e limitações.
@@ -3318,6 +3328,8 @@ Você consegue executar e atualizar runbook a partir de simulação.
 \newpage
 
 # Trilha 06 - Arquitetura e Sistemas Distribuídos
+
+**No Plano de Estudos:** [fase A](PLANO_DE_ESTUDOS_APLICADO.md#fase-a---antes-de-código-de-produto), [fase C](PLANO_DE_ESTUDOS_APLICADO.md#fase-c---identity--household), [fase F](PLANO_DE_ESTUDOS_APLICADO.md#fase-f---import-pipeline), [fase G](PLANO_DE_ESTUDOS_APLICADO.md#fase-g---analytics--insights-determinísticos), [fase H](PLANO_DE_ESTUDOS_APLICADO.md#fase-h---ia), [fase J](PLANO_DE_ESTUDOS_APLICADO.md#fase-j---evolução-e-escala).
 
 A trilha existe para que decisões como BullMQ, Kafka, CQRS ou microservices sejam respostas a problemas observados, não itens decorativos de stack.
 
@@ -4012,6 +4024,8 @@ Você consegue criar política por dependência.
 
 # Trilha 07 - IA Aplicada com Segurança
 
+**No Plano de Estudos:** [fase H](PLANO_DE_ESTUDOS_APLICADO.md#fase-h---ia), [fase J](PLANO_DE_ESTUDOS_APLICADO.md#fase-j---evolução-e-escala).
+
 IA é um subsistema assistivo. O núcleo financeiro deve continuar explicável, reproduzível e funcional mesmo sem provedor de IA.
 
 > Regra desta trilha: não marque um conceito como concluído apenas porque você leu sobre ele. Ele só está dominado quando você consegue explicar, aplicar no projeto, testar e justificar as escolhas e limitações.
@@ -4565,6 +4579,8 @@ Você consegue definir autonomia graduada.
 
 # Trilha 08 - Testes e Qualidade
 
+**No Plano de Estudos:** [fase A](PLANO_DE_ESTUDOS_APLICADO.md#fase-a---antes-de-código-de-produto), [fase B](PLANO_DE_ESTUDOS_APLICADO.md#fase-b---bootstrap-de-engenharia), [fase C](PLANO_DE_ESTUDOS_APLICADO.md#fase-c---identity--household), [fase D](PLANO_DE_ESTUDOS_APLICADO.md#fase-d---accounts--transactions), [fase E](PLANO_DE_ESTUDOS_APLICADO.md#fase-e---credit-cards--installments), [fase I](PLANO_DE_ESTUDOS_APLICADO.md#fase-i---staging-e-produção).
+
 Qualidade aqui significa preservar invariantes financeiras e de segurança enquanto o sistema evolui. Teste é especificação executável, não troféu de coverage.
 
 > Regra desta trilha: não marque um conceito como concluído apenas porque você leu sobre ele. Ele só está dominado quando você consegue explicar, aplicar no projeto, testar e justificar as escolhas e limitações.
@@ -5014,6 +5030,8 @@ Você executa toda suíte sem dados reais.
 \newpage
 
 # Trilha 09 - Domínio Financeiro da Aplicação
+
+**No Plano de Estudos:** [fase A](PLANO_DE_ESTUDOS_APLICADO.md#fase-a---antes-de-código-de-produto), [fase D](PLANO_DE_ESTUDOS_APLICADO.md#fase-d---accounts--transactions), [fase E](PLANO_DE_ESTUDOS_APLICADO.md#fase-e---credit-cards--installments), [fase G](PLANO_DE_ESTUDOS_APLICADO.md#fase-g---analytics--insights-determinísticos).
 
 Esta trilha não é educação financeira pessoal; é modelagem de software financeiro doméstico. O objetivo é definir semântica reproduzível para impedir dupla contagem, saldos inexplicáveis e “insights” baseados em números errados.
 
