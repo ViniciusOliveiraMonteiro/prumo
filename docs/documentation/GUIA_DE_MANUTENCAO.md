@@ -11,7 +11,8 @@ Este guia define como manter a documentação do Prumo junto com o código e as 
 | Comportamento implementado | Código, testes e contrato gerado | README da aplicação, guia e roteiro operacional |
 | Status, aceite e próxima ação | [Plano de desenvolvimento](../planning/PLANO_DE_DESENVOLVIMENTO.md) | Link para a evidência ou pendência no documento específico |
 | Procedimento de execução e diagnóstico | [`operations/`](../operations/) e READMEs | Índice e guia da aplicação |
-| Conceitos e exercícios | Plano de Estudos e Caderno | Links nos documentos de decisão pertinentes |
+| Ordem, fases e checkpoints de estudo | [Plano de Estudos](../../PLANO_DE_ESTUDOS_APLICADO.md) | Links para os tópicos do Caderno |
+| Conceitos, exercícios e revisão dos tópicos | [Caderno de Estudos](../../CADERNO_DE_ESTUDOS_APLICADO.md) | Links nos documentos de decisão pertinentes |
 
 Uma regra normativa deve ter uma fonte principal identificável. Resumos podem facilitar a leitura, mas devem apontar para a fonte e não criar uma segunda versão da regra. Uma ADR em estado `proposta`, uma `HIPÓTESE` ou um item `NÃO DEFINIDO` não deve aparecer como decisão aprovada ou funcionalidade pronta.
 

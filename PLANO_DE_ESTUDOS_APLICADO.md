@@ -12,6 +12,8 @@ Este documento transforma o desenvolvimento da Plataforma de Inteligência Finan
 - **Plano Mestre**: define produto, domínio, requisitos, arquitetura, decisões e roadmap.
 - **Plano de Estudos**: define o que aprender para tomar, implementar, testar e defender essas decisões.
 
+O [Caderno de Estudos](CADERNO_DE_ESTUDOS_APLICADO.md) desenvolve os tópicos com explicações, exercícios, perguntas de revisão e critérios de conclusão. Este plano é a fonte para a ordem de estudo, as fases e os checkpoints; o [Plano de Desenvolvimento](docs/planning/PLANO_DE_DESENVOLVIMENTO.md) registra o andamento das sprints.
+
 O objetivo não é colecionar tecnologias. Para cada conceito, você deve conseguir responder:
 
 1. qual problema ele resolve;
@@ -46,11 +48,11 @@ Laboratórios -> ADRs -> Implementação -> Testes -> Operação
 
 ### Fonte de verdade
 
-- regras de produto e negócio: Plano Mestre e `docs/product` / `docs/domain`;
-- decisão arquitetural: ADR;
-- conteúdo didático: `docs/study`;
-- comportamento executável: código + testes;
-- operação: runbooks e documentação de infraestrutura.
+- regras de produto e negócio: [Plano Mestre](PLANO_MESTRE_GESTAO_FINANCEIRA_DOMESTICA.md) e exemplos em [`docs/domain/`](docs/domain/);
+- decisão arquitetural: ADR em [`docs/decisions/`](docs/decisions/);
+- conteúdo didático: este plano e o [Caderno](CADERNO_DE_ESTUDOS_APLICADO.md);
+- comportamento executável: código e testes;
+- operação: [`docs/operations/`](docs/operations/) e documentação de infraestrutura.
 
 Se um estudo sugerir uma alternativa diferente da arquitetura atual, ele **não muda o projeto sozinho**. A mudança precisa de discussão e ADR.
 
