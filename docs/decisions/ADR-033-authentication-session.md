@@ -40,7 +40,7 @@ A topologia de origem única entre browser, Next.js e NestJS foi fixada pela ADR
 
 ## Consequências e pendências
 
-Sessões no PostgreSQL permitem revogação sem uma lista paralela de JWTs e reaproveitam a infraestrutura decidida. O custo é uma leitura/validação de sessão e store confiável, além do trabalho de integração da web com a API. A decisão não define permissões de OWNER/MEMBER/VIEWER, convites, política de retenção, formato físico das tabelas, topologia final de deploy, RLS nem abertura pública. Esses pontos devem ser decididos e testados antes dos fluxos correspondentes. A ADR-034 fixou a topologia do navegador; os comandos de bootstrap estão propostos em `docs/BOOTSTRAP_SPRINT_3.md`. O gate da Sprint 4 depende de implementar a estratégia e demonstrar isolamento A/B.
+Sessões no PostgreSQL permitem revogação sem uma lista paralela de JWTs e reaproveitam a infraestrutura decidida. O custo é uma leitura/validação de sessão e store confiável, além do trabalho de integração da web com a API. A decisão não define permissões de OWNER/MEMBER/VIEWER, convites, política de retenção, formato físico das tabelas, topologia final de deploy, RLS nem abertura pública. Esses pontos devem ser decididos e testados antes dos fluxos correspondentes. A ADR-034 fixou a topologia do navegador; os comandos de bootstrap estão propostos em `docs/operations/BOOTSTRAP_SPRINT_3.md`. O gate da Sprint 4 depende de implementar a estratégia e demonstrar isolamento A/B.
 
 ## Fontes técnicas consultadas
 

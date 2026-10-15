@@ -2,10 +2,27 @@
 
 **Inteligência financeira para colocar sua casa no eixo.**
 
-Prumo é uma plataforma de inteligência financeira doméstica em início de desenvolvimento. `prumo-web/` contém a interface Next.js e `prumo-api/` a API NestJS. As ADRs 030–035 definem a arquitetura base e a organização do código; o andamento do bootstrap está em [docs/BOOTSTRAP_SPRINT_3.md](docs/BOOTSTRAP_SPRINT_3.md).
+Prumo é uma plataforma de inteligência financeira doméstica em desenvolvimento. Pretende consolidar dados de uma residência e explicar saldos, despesas, orçamento e indicadores com regras rastreáveis. Hoje o repositório contém o bootstrap técnico: página inicial, endpoint de saúde, PostgreSQL local, migração de verificação e testes; fluxos financeiros e login ainda não estão disponíveis.
 
-Para executar localmente, use Node 24.21.0 e pnpm 12.8.1. Copie `.env.example` para `.env` e substitua a senha de desenvolvimento; `.env` não entra no Git. Na raiz, rode `pnpm install --frozen-lockfile`, `docker compose up -d --wait postgres`, `pnpm --filter prumo-api build`, `pnpm --filter prumo-api db:migrate`, `pnpm dev:api` e `pnpm dev:web` em terminais separados. A web atende em `http://localhost:3000`; `/api/health` é encaminhado à API na porta 3001. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm --filter prumo-api test:e2e`, `pnpm --filter prumo-api test:db`, `pnpm contract:check` e `pnpm build` são os checks. O teste de banco requer PostgreSQL local ativo.
+Leia o [Guia da aplicação](docs/application/GUIA_DA_APLICACAO.md) para propósito, tecnologias, regras aprovadas, estado de implementação, execução local e verificações. O [Plano de desenvolvimento](docs/planning/PLANO_DE_DESENVOLVIMENTO.md) mostra o andamento e a próxima ação.
 
-Comece por [Plano de desenvolvimento](docs/PLANO_DE_DESENVOLVIMENTO.md) para acompanhar sprints e próximos passos. O [Plano Mestre](PLANO_MESTRE_GESTAO_FINANCEIRA_DOMESTICA.md) define produto e domínio; o [Plano de Estudos](PLANO_DE_ESTUDOS_APLICADO.md) e o [Caderno](CADERNO_DE_ESTUDOS_APLICADO.md) orientam o aprendizado. Decisões aprovadas ficam em `docs/decisions/` e instruções para o Codex em `AGENTS.md`.
+## Início rápido
 
-O Git foi inicializado na raiz. A implementação de produto começa após os gates de domínio, segurança e arquitetura descritos no plano.
+Use Node.js `>=24.21.0 <25`, pnpm `12.8.1` e Docker integrado à distro. Na raiz do repositório, copie `.env.example` para `.env` e substitua as duas ocorrências da senha de exemplo pela mesma senha local. Depois execute:
+
+```bash
+pnpm install --frozen-lockfile
+docker compose up -d --wait postgres
+pnpm --filter prumo-api build
+pnpm --filter prumo-api db:migrate
+```
+
+Inicie `pnpm dev:api` e `pnpm dev:web` em terminais separados. Acesse `http://localhost:3000` e `http://localhost:3000/api/health`. Para os checks disponíveis e solução de problemas, consulte o [guia](docs/application/GUIA_DA_APLICACAO.md#verificações-e-contrato).
+
+## Repositório
+
+- [`prumo-web/`](prumo-web/README.md): interface Next.js e encaminhamento de `/api`.
+- [`prumo-api/`](prumo-api/README.md): API NestJS, contrato OpenAPI, migrações e testes de banco.
+- [`docs/`](docs/README.md): índice de aplicação, decisões, domínio, segurança, execução e aprendizado.
+
+O [Plano Mestre](PLANO_MESTRE_GESTAO_FINANCEIRA_DOMESTICA.md) orienta o produto; as ADRs registram decisões; código e testes descrevem o comportamento implementado. As instruções de trabalho ficam em [AGENTS.md](AGENTS.md).

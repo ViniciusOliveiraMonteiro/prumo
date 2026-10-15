@@ -110,7 +110,7 @@ O cenário parte de faturas R$ 100/R$ 120, créditos A = R$ 30 e B = R$ 20, paga
 
 ## Pendências por fase do primeiro fluxo
 
-O [plano de desenvolvimento](../PLANO_DE_DESENVOLVIMENTO.md) põe contas e transações na Sprint 5, cartão na Sprint 6 e importação na Sprint 7. A proposta de cartão não obriga a criar seus registros na primeira migração.
+O [plano de desenvolvimento](../planning/PLANO_DE_DESENVOLVIMENTO.md) põe contas e transações na Sprint 5, cartão na Sprint 6 e importação na Sprint 7. A proposta de cartão não obriga a criar seus registros na primeira migração.
 
 | Fase | Antes de detalhar ou implementar | Pode aguardar sem contradizer o fluxo anterior |
 |---|---|---|

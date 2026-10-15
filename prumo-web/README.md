@@ -2,6 +2,10 @@
 
 Diretório da interface web no monorepo Prumo.
 
-Next.js com App Router e TypeScript foram escolhidos na ADR-030. A ADR-034 definiu origem única com `/api` encaminhado ao NestJS. O bootstrap está em andamento conforme `../docs/BOOTSTRAP_SPRINT_3.md`. A página inicial é estática; quando houver lógica de interação, componentes e páginas terão hooks dedicados conforme a ADR-035. O Next.js encaminha `/api` e `/api/*` à API local. O contrato OpenAPI gerado fica em `src/lib/api/generated.ts`; rode `pnpm contract:check` na raiz após mudanças no contrato.
+Next.js com App Router e TypeScript foram escolhidos na ADR-030. A ADR-034 definiu origem única com `/api` encaminhado ao NestJS. A página inicial é estática; ainda não há telas financeiras nem login. Quando houver lógica de interação, componentes e páginas terão hooks dedicados conforme a ADR-035.
 
-As instruções gerais estão em `../AGENTS.md` e os documentos de produto na pasta pai. Mudanças no contrato com o backend exigem validação dos dois lados.
+Da raiz do repositório, execute `pnpm dev:web` após instalar as dependências; a web atende em `http://localhost:3000`. `next.config.ts` encaminha `/api` e `/api/*` à API local em `http://127.0.0.1:3001` por padrão; `PRUMO_API_INTERNAL_ORIGIN` permite mudar esse endereço interno. Inicie `pnpm dev:api` em outro terminal para testar `http://localhost:3000/api/health`. O navegador deve usar caminhos relativos `/api`.
+
+O contrato OpenAPI gerado pela API produz `src/lib/api/generated.ts`. Após mudanças no contrato, execute `pnpm contract:generate` e `pnpm contract:check` na raiz; valide os dois lados. Os comandos `pnpm --filter prumo-web lint`, `typecheck` e `build` verificam esta aplicação.
+
+Propósito, regras e execução completa estão no [Guia da aplicação](../docs/application/GUIA_DA_APLICACAO.md). O bootstrap está em [BOOTSTRAP_SPRINT_3](../docs/operations/BOOTSTRAP_SPRINT_3.md) e as instruções de trabalho em `../AGENTS.md`.

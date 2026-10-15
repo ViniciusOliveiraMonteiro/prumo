@@ -59,31 +59,19 @@ Ao final, o projeto deve demonstrar experiência prática em:
 
 ## 1.2 Ecossistema de documentação e aprendizado
 
-Este Plano Mestre é a fonte de verdade de produto, arquitetura, requisitos e roadmap. Ele **não substitui** o material didático necessário para compreender as decisões. O repositório deve manter também:
+Este Plano Mestre orienta produto, domínio, requisitos e roadmap. As decisões delimitadas ficam em ADRs; código e testes mostram o comportamento implementado. O repositório mantém também:
 
 ```text
 docs/
-  project/
-    master-plan.md
-
-  study/
-    study-plan.md
-    01-backend.md
-    02-database.md
-    03-security-privacy.md
-    04-devops-infra.md
-    05-observability.md
-    06-architecture-distributed-systems.md
-    07-ai.md
-    08-testing-quality.md
-    09-domain-finance.md
-
-  product/
-  domain/
-  architecture/
-  security/
-  adr/
-  runbooks/
+  README.md              # índice da documentação
+  application/           # guia e estado da aplicação
+  planning/              # sprints e critérios de aceite
+  operations/            # execução e evidências técnicas
+  decisions/             # ADRs aceitas e propostas
+  domain/                # exemplos e modelos conceituais
+  security/              # ameaças e controles
+  collaboration/         # organização de agentes
+  documentation/         # regras de manutenção dos documentos
 ```
 
 A regra de uso é:
@@ -100,6 +88,8 @@ requisito/risco identificado
 ```
 
 IDs como `SEC-*`, `DB-*`, `BACK-*`, `DEV-*`, `OBS-*`, `ARCH-*`, `AI-*`, `TEST-*` e `DOM-*` apontam para o Plano de Estudos Aplicado. O objetivo é evitar que termos técnicos apareçam neste documento como se já fossem conhecimento implícito.
+
+O [índice de `docs/`](docs/README.md) aponta para os documentos atuais. O [guia de manutenção](docs/documentation/GUIA_DE_MANUTENCAO.md) define a fonte principal por assunto, a atualização na mesma mudança e a revisão de referências. O Plano de Estudos Aplicado e o Caderno de Estudos Aplicado permanecem na raiz.
 
 # 2. Convenção de status das decisões
 
@@ -1031,7 +1021,7 @@ Sugestão inicial:
 
 **DEFINIDO:** um monorepo na pasta pai, com `prumo-web/` e `prumo-api/` como diretórios internos e os documentos compartilhados na raiz/`docs/`. Ver `docs/decisions/ADR-001-monorepo.md`.
 
-O Git foi inicializado na raiz pelo usuário, na branch `main`, e o commit inicial foi criado. `origin` aponta para `git@github.com:ViniciusOliveiraMonteiro/prumo.git`; `main` já foi publicada com um socket SSH explícito. As duas aplicações não têm repositórios Git próprios. O bootstrap local de dependências, verificações e CI está registrado em `docs/BOOTSTRAP_SPRINT_3.md`; a execução remota da CI segue pendente.
+O Git foi inicializado na raiz pelo usuário, na branch `main`, e o commit inicial foi criado. `origin` aponta para `git@github.com:ViniciusOliveiraMonteiro/prumo.git`; `main` já foi publicada com um socket SSH explícito. As duas aplicações não têm repositórios Git próprios. O bootstrap local de dependências, verificações e CI está registrado em `docs/operations/BOOTSTRAP_SPRINT_3.md`; o usuário confirmou a aprovação de uma execução remota anterior da CI, sem conferência dos logs e do SHA nesta sessão, e as alterações posteriores ainda exigem validação remota.
 
 ## 19.1 Ferramentas
 
@@ -2249,59 +2239,9 @@ Documentação a atualizar
 
 # 44. Governança de documentação
 
-Estrutura sugerida:
+A [estrutura atual](docs/README.md) organiza os documentos por finalidade. O [guia de manutenção](docs/documentation/GUIA_DE_MANUTENCAO.md) é a regra operacional para escolher a fonte principal, atualizar documentos na mesma mudança e conferir links, âncoras, comandos e status. O Plano Mestre orienta produto e domínio; uma ADR aceita registra uma decisão delimitada; código, testes e contrato gerado descrevem o que foi implementado; o plano de desenvolvimento registra execução e pendências. Resumos devem apontar para a fonte principal sem criar regras concorrentes.
 
-```text
-docs/
-  product/
-    vision.md
-    personas.md
-    scope.md
-    roadmap.md
-
-  domain/
-    glossary.md
-    domain-map.md
-    business-rules.md
-    calculations.md
-
-  use-cases/
-    UC-001-create-household.md
-    UC-002-create-account.md
-    ...
-
-  architecture/
-    overview.md
-    frontend.md
-    backend.md
-    async-processing.md
-    ai.md
-    observability.md
-
-  database/
-    erd.md
-    indexes.md
-    migrations.md
-
-  api/
-    conventions.md
-    errors.md
-    idempotency.md
-
-  security/
-    threat-model.md
-    privacy.md
-    household-isolation.md
-
-  operations/
-    environments.md
-    deployment.md
-    backup-restore.md
-    incident-runbook.md
-
-  decisions/
-    ADR-001-...
-```
+Não apresentar proposta, hipótese ou laboratório isolado como capacidade pronta. Ao alterar títulos ou mover arquivos, atualize as referências e confira seus destinos. Mantenha Markdown como fonte editável; PDFs só mediante pedido explícito.
 
 # 45. ADRs iniciais
 
@@ -3014,7 +2954,7 @@ Quando a decisão deixa de fazer sentido?
 
 As pastas `prumo-web/` e `prumo-api/` e o Git na raiz já foram criados. Não iniciar código de produto antes das definições da fase anterior ao bootstrap.
 
-O andamento por sprint, seus gates e o estado do ambiente estão em `docs/PLANO_DE_DESENVOLVIMENTO.md`.
+O andamento por sprint, seus gates e o estado do ambiente estão em `docs/planning/PLANO_DE_DESENVOLVIMENTO.md`.
 
 A sequência recomendada é:
 

@@ -14,16 +14,35 @@ if (!connectionString) throw new Error('PRUMO_DATABASE_URL is required');
 const suffix = process.pid.toString();
 const schema = `prumo_lab_${suffix}`;
 const role = `prumo_lab_app_${suffix}`;
+const ownerRole = `prumo_lab_owner_${suffix}`;
+const bypassRole = `prumo_lab_bypass_${suffix}`;
 const password = randomBytes(24).toString('hex');
+const ownerPassword = randomBytes(24).toString('hex');
+const bypassPassword = randomBytes(24).toString('hex');
 const admin = new pg.Pool({ connectionString });
 const appUrl = new URL(connectionString);
 appUrl.username = role;
 appUrl.password = password;
 const app = new pg.Pool({ connectionString: appUrl.toString(), max: 2 });
+const jobPool = new pg.Pool({ connectionString: appUrl.toString(), max: 1 });
+const ownerUrl = new URL(connectionString);
+ownerUrl.username = ownerRole;
+ownerUrl.password = ownerPassword;
+const owner = new pg.Pool({ connectionString: ownerUrl.toString(), max: 1 });
+const bypassUrl = new URL(connectionString);
+bypassUrl.username = bypassRole;
+bypassUrl.password = bypassPassword;
+const bypass = new pg.Pool({ connectionString: bypassUrl.toString(), max: 1 });
 
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
   await admin.query(`CREATE ROLE ${role} LOGIN PASSWORD '${password}'`);
+  await admin.query(
+    `CREATE ROLE ${ownerRole} LOGIN PASSWORD '${ownerPassword}'`,
+  );
+  await admin.query(
+    `CREATE ROLE ${bypassRole} LOGIN BYPASSRLS PASSWORD '${bypassPassword}'`,
+  );
   await admin.query(`
     CREATE TABLE ${schema}.probe_records (
       id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -48,16 +67,25 @@ beforeAll(async () => {
     CREATE POLICY household_scope ON ${schema}.probe_records
       USING (household_id = current_setting('prumo.household_id', true))
       WITH CHECK (household_id = current_setting('prumo.household_id', true));
+    GRANT USAGE, CREATE ON SCHEMA ${schema} TO ${ownerRole};
+    ALTER TABLE ${schema}.probe_records OWNER TO ${ownerRole};
     GRANT USAGE ON SCHEMA ${schema} TO ${role};
+    GRANT USAGE ON SCHEMA ${schema} TO ${bypassRole};
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${schema} TO ${role};
+    GRANT SELECT ON ${schema}.probe_records TO ${bypassRole};
     GRANT USAGE ON ALL SEQUENCES IN SCHEMA ${schema} TO ${role};
   `);
 });
 
 afterAll(async () => {
   await app.end();
+  await jobPool.end();
+  await owner.end();
+  await bypass.end();
   await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
   await admin.query(`DROP ROLE IF EXISTS ${role}`);
+  await admin.query(`DROP ROLE IF EXISTS ${ownerRole}`);
+  await admin.query(`DROP ROLE IF EXISTS ${bypassRole}`);
   await admin.end();
 });
 
@@ -141,6 +169,95 @@ test('application role cannot read or write another household and pool resets co
       `SELECT id FROM ${schema}.probe_records`,
     );
     expect(afterReuse.rows).toHaveLength(0);
+  } finally {
+    client.release();
+  }
+});
+
+test('table owner bypasses RLS until FORCE is enabled; BYPASSRLS still bypasses', async () => {
+  await admin.query(
+    `INSERT INTO ${schema}.probe_records (household_id, amount) VALUES ('A', 101), ('B', 202)`,
+  );
+  const ownerBeforeForce = await owner.query<{ household_id: string }>(
+    `SELECT household_id FROM ${schema}.probe_records WHERE amount IN (101, 202) ORDER BY amount`,
+  );
+  expect(ownerBeforeForce.rows.map((row) => row.household_id)).toEqual([
+    'A',
+    'B',
+  ]);
+
+  await admin.query(
+    `ALTER TABLE ${schema}.probe_records FORCE ROW LEVEL SECURITY`,
+  );
+  const ownerWithoutContext = await owner.query(
+    `SELECT id FROM ${schema}.probe_records WHERE amount IN (101, 202)`,
+  );
+  expect(ownerWithoutContext.rows).toHaveLength(0);
+
+  const ownerClient = await owner.connect();
+  try {
+    await ownerClient.query('BEGIN');
+    await ownerClient.query(
+      "SELECT set_config('prumo.household_id', 'A', true)",
+    );
+    const ownerAsA = await ownerClient.query<{ household_id: string }>(
+      `SELECT household_id FROM ${schema}.probe_records WHERE amount IN (101, 202)`,
+    );
+    expect(ownerAsA.rows.map((row) => row.household_id)).toEqual(['A']);
+    await ownerClient.query('ROLLBACK');
+  } finally {
+    ownerClient.release();
+  }
+
+  const bypassWithoutContext = await bypass.query<{ household_id: string }>(
+    `SELECT household_id FROM ${schema}.probe_records WHERE amount IN (101, 202) ORDER BY amount`,
+  );
+  expect(bypassWithoutContext.rows.map((row) => row.household_id)).toEqual([
+    'A',
+    'B',
+  ]);
+});
+
+test('a household-scoped job uses transaction context and loses it after release', async () => {
+  const job = await jobPool.connect();
+  const backendPid = (
+    await job.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+  ).rows[0].pid;
+  try {
+    expect(
+      (await job.query(`SELECT id FROM ${schema}.probe_records`)).rows,
+    ).toHaveLength(0);
+    await job.query('BEGIN');
+    await job.query("SELECT set_config('prumo.household_id', 'A', true)");
+    const visible = await job.query<{ household_id: string }>(
+      `SELECT DISTINCT household_id FROM ${schema}.probe_records`,
+    );
+    expect(visible.rows.map((row) => row.household_id)).toEqual(['A']);
+    const crossHouseholdWrite = await job.query(
+      `UPDATE ${schema}.probe_records SET amount = amount + 1 WHERE household_id = 'B'`,
+    );
+    expect(crossHouseholdWrite.rowCount).toBe(0);
+    await job.query('COMMIT');
+  } finally {
+    job.release();
+  }
+  const reused = await jobPool.query<{ pid: number; count: string }>(
+    `SELECT pg_backend_pid() AS pid, count(*) FROM ${schema}.probe_records`,
+  );
+  expect(reused.rows[0].pid).toBe(backendPid);
+  expect(reused.rows[0].count).toBe('0');
+});
+
+test('RLS context alone does not prove actor authorization', async () => {
+  const client = await app.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('prumo.household_id', 'B', true)");
+    const rows = await client.query(
+      `SELECT id FROM ${schema}.probe_records WHERE household_id = 'B'`,
+    );
+    expect(rows.rows.length).toBeGreaterThan(0);
+    await client.query('ROLLBACK');
   } finally {
     client.release();
   }
