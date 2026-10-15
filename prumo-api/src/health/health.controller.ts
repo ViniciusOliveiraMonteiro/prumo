@@ -1,5 +1,6 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '@nestjs/authentication';
 import {
   HEALTH_CHECK,
   type HealthCheck,
@@ -15,6 +16,7 @@ export class HealthController {
   ) {}
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Verifica o processo da API' })
   @ApiOkResponse({ type: HealthResponseDto })
   getHealth(): HealthStatus {

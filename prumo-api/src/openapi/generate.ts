@@ -13,6 +13,7 @@ try {
   const config = new DocumentBuilder()
     .setTitle('Prumo API')
     .setVersion('0.1.0')
+    .addCookieAuth('__Host-sid')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   const contents = `${JSON.stringify(document, null, 2)}\n`;

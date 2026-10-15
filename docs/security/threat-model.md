@@ -1,10 +1,10 @@
 # Threat model inicial do Prumo
 
-**Status:** rascunho da Sprint 1 (SEC-002). Nenhum controle desta tabela foi implementado ou validado. Revisar quando autenticação, banco, armazenamento, importação e IA forem definidos. Este documento deriva das seções 15, 22, 31 e 32 do Plano Mestre.
+**Status:** rascunho iniciado na Sprint 1 (SEC-002), atualizado em 2026-10-15 para o primeiro login privado. Sessão revogável, proteção de origem e role restrita passaram em testes locais; os demais controles continuam candidatos ou pendentes. Revisar ao definir autorização de household, hospedagem, armazenamento, importação e IA. Este documento deriva das seções 15, 22, 31 e 32 do Plano Mestre.
 
 ## Escopo e ativos
 
-O escopo inicial cobre consulta e alteração de contas/transações, transferência entre contas e importação de extrato. Login, convites, exportação, exclusão e IA constam como superfícies futuras a detalhar antes da implementação.
+O escopo inicial cobre login privado, consulta e alteração futuras de contas/transações, transferência entre contas e importação de extrato. Convites, exportação, exclusão e IA constam como superfícies futuras a detalhar antes da implementação.
 
 | Ativo | Dano principal em caso de falha | Classificação interna candidata |
 |---|---|---|
@@ -25,7 +25,7 @@ Pessoa / navegador
   → armazenamento de arquivos e processamento de imports (futuros)
 ```
 
-O navegador e arquivos enviados são entradas não confiáveis. A API não pode tratar `householdId` recebido do cliente como prova de autorização. O limite entre households precisa ser verificado para cada recurso, mesmo que os dados compartilhem banco. A ADR-029 define a baseline de autorização e escopo no primeiro fluxo; a escolha de RLS permanece `NÃO DEFINIDO` e depende de laboratório com a stack aceita nas ADRs 030/031. A ADR-033 aceitou a estratégia de autenticação e sessão para o primeiro acesso web privado, ainda sem implementação. Frontend, backend e banco foram escolhidos, mas não implantados.
+O navegador e arquivos enviados são entradas não confiáveis. A API não pode tratar `householdId` recebido do cliente como prova de autorização. O limite entre households precisa ser verificado para cada recurso, mesmo que os dados compartilhem banco. A ADR-029 define a baseline de autorização e escopo no primeiro fluxo; a escolha de RLS permanece em proposta na ADR-036. As ADRs 033/037 definem sessão e identidade mínimas: a API autentica o usuário, mas não autoriza household. Frontend, backend e banco foram escolhidos, mas não implantados.
 
 ## Ameaças, controles candidatos e evidência exigida
 
@@ -63,10 +63,13 @@ Prioridade é uma triagem inicial por impacto e plausibilidade, não uma medida 
 | TM-28 | Crédito de R$ 100 aplicado ao cartão para compra estornável em R$ 80 cria R$ 100 de despesa negativa, descarta R$ 20 da baixa ou duplica a redução da dívida na revisão. | Alta | Separar baixa total confirmada de classificação econômica; validar partes somando o crédito aplicado, limite elegível da compra, dívida aberta e household; preservar fonte e impedir replay (ADR-018/019). | Com compra original R$ 80, outra dívida R$ 20 e crédito aplicado R$ 100, verificar dívida −100 uma vez, despesa −80, R$ 20 aplicados sem classificação; reimportar e revisar sem segunda baixa ou vínculo cruzado. |
 | TM-29 | Crédito apenas confirmado para uso futuro acima do valor estornável antecipa baixa da dívida ou despesa, perde o excedente, ou gera efeito duplicado quando aplicado depois. | Alta | Manter as partes confirmadas a utilizar vinculadas à mesma fonte e household, com soma igual ao total confirmado; não produzir efeito financeiro ou orçamentário na confirmação; reconciliar a transição para aplicado sem replay. Em aplicação parcial sem discriminação, consumir primeiro a parte elegível por inferência corrigível (ADR-018/019). | Confirmar R$ 100 ligados a compra já paga estornável em R$ 80: mostrar R$ 80 elegíveis e R$ 20 sem classificação, sem alterar dívida, conta, despesa ou orçamento; reimportar e aplicar R$ 50, verificando uma única baixa de R$ 50, despesa −50 e saldos a utilizar de R$ 30 elegíveis mais R$ 20 sem classificação. Corrigir a origem sem segunda baixa. |
 | TM-30 | Classificação manual do excedente aplicado cria segunda baixa, transforma valor acima do limite em novo estorno ou é alterada por usuário de outro household sem trilha. | Alta | Autorizar usuário, cartão, crédito e compra no mesmo household; limitar a classificação manual ao excedente já aplicado, exigir justificativa e conservar fonte, valor e histórico. Eventual efeito econômico ou orçamentário pertence ao mês da aplicação; tipos admitidos ainda dependem de decisão (ADR-019). | Aplicar R$ 100 em março com R$ 80 elegíveis; classificar manualmente R$ 20 em abril e corrigir a escolha: eventual efeito fica em março, a dívida continua R$ 100 menor uma vez, o estorno da compra não excede R$ 80 e ambas as escolhas ficam rastreáveis. Rejeitar usuário de outro household. |
+| TM-31 | Tentativas repetidas adivinham a senha de uma conta privada. | Alta | Hash de senha pela biblioteca e resposta genérica já implementados; limite de tentativas, monitoramento e recuperação segura ainda pendentes. | E2E local cobre senha errada, mas é necessário testar bloqueio/retardo de tentativas antes de uso real. |
+| TM-32 | Cookie de sessão é aceito em origem hostil ou continua válido após logout/desativação. | Alta | Cookie host-only com flags seguras, origem pública explícita, CSRF no NestJS, store PostgreSQL e leitura atual do usuário. | E2E local direto e pelo rewrite confirmou `403` para origem hostil, `401` após revogação/desativação, `no-store` e flags; repetir em HTTPS/staging e cache com dois usuários. |
+| TM-33 | API usa por engano a role migradora e contorna limites de isolamento do banco. | Alta | Exigir `prumo_app`, grants mínimos e recusa na inicialização com URL de role distinta. | Teste PostgreSQL local confirmou ausência de owner, superuser, `BYPASSRLS` e CREATE no schema; repetir no deploy e nas tabelas financeiras. |
 
 ## Pendências e gatilhos de revisão
 
-- Definir autenticação, ciclo de sessão, convites e revogação antes de implementar recursos financeiros (SEC-003/004).
+- Fechar limite de tentativas, troca/recuperação de credencial, limpeza de sessões e testes HTTPS/cache; definir convites antes de múltiplos usuários. Login privado local e revogação básica não autorizam recursos financeiros (SEC-003/004).
 - Modelar fisicamente a obrigação própria e os vínculos definidos na ADR-017; validar que pagamento parcial baixa somente o valor pago, mantém o restante em aberto e não é duplicado por retry. Implementar e testar a alocação mais antiga primeiro da ADR-008, com correção sem alterar o total; definir idempotência antes de implementar cartão e revisar TM-13/14/17 após testes.
 - Definir a chave de origem e o fluxo de revisão de juros/tarifas informados na fatura antes de implementar importação de cartão; revisar TM-15 com os testes de deduplicação.
 - Decidir isolamento no banco, inclusive se RLS será necessário, e validar com a mesma role usada pela aplicação.

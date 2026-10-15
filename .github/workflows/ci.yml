@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PRUMO_DATABASE_URL: postgres://prumo_migrator:${{ github.run_id }}@127.0.0.1:5432/prumo_dev
+      PRUMO_APP_DATABASE_URL: postgres://prumo_app:${{ github.run_id }}-app@127.0.0.1:5432/prumo_dev
+      PRUMO_PUBLIC_ORIGIN: http://localhost:3000
     services:
       postgres:
         image: postgres:18.6
@@ -39,9 +41,10 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm --filter prumo-api test:e2e
       - run: pnpm --filter prumo-api build
       - run: pnpm --filter prumo-api db:migrate
+      - run: pnpm --filter prumo-api db:prepare-app
+      - run: pnpm --filter prumo-api test:e2e
       - run: pnpm --filter prumo-api test:db
       - run: pnpm contract:check
       - run: pnpm build

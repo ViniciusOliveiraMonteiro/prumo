@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   experimental: { useTypeScriptCli: false },
   async rewrites() {
     const apiOrigin =

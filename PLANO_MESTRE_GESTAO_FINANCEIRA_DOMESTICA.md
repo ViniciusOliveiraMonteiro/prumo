@@ -129,7 +129,7 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Cache | NÃO DEFINIDO | Redis apenas quando existir caso real. |
 | Jobs | HIPÓTESE | BullMQ + Redis para imports, recalculações e tarefas assíncronas. |
 | Event streaming | NÃO DEFINIDO | Kafka não entra inicialmente; avaliar somente mediante lacuna concreta. |
-| Autenticação | DEFINIDO para primeiro acesso web privado | ADR-033 aceita autoridade no NestJS e sessão revogável em PostgreSQL; biblioteca candidata ainda precisa de validação. |
+| Autenticação | DEFINIDO para primeiro acesso web privado | ADR-033 aceita autoridade no NestJS e sessão revogável em PostgreSQL; ADR-037 aprova identidade mínima e provisionamento local. Login básico foi implementado, com gates de segurança ainda pendentes. |
 | Topologia web/API no navegador | DEFINIDO para primeiro acesso web privado | ADR-034 aceita origem única, com páginas no Next.js e `/api` na API NestJS; hospedagem e proxy de implantação seguem pendentes. |
 | Multi-user | DEFINIDO conceitualmente | Household + memberships. Implementação detalhada pendente. |
 | Infra cloud | NÃO DEFINIDO | Comparar Vercel + provedor backend vs cloud unificada. |
@@ -1399,6 +1399,8 @@ Sugestão: SQL direto no MVP, snapshots apenas para métricas que realmente prec
 **DEFINIDO para a estratégia do primeiro acesso web privado pela ADR-033.**
 
 NestJS é a autoridade de identidade e sessão, com sessões revogáveis em PostgreSQL e sem serviço pago obrigatório. O módulo oficial `@nestjs/authentication` é candidato sujeito a gate de compatibilidade e segurança. Store, cookie/CSRF, recuperação, abertura pública e custo operacional exigem validação própria.
+
+**Implementado localmente em 2026-10-15:** a ADR-037 aprovou users e sessions separados dos dados de household, role restrita da API e provisionamento local da primeira conta. Login, leitura da identidade e logout foram demonstrados com cookie revogável pelo rewrite. Permanecem pendentes limite de tentativas, troca/recuperação de credencial, HTTPS/staging, membership e autorização financeira; essa implementação não libera dados de household.
 
 A ADR-034 aceita uma origem única para o navegador, com `/api` e `/api/*` roteados ao NestJS e páginas no Next.js. **Status: definido para o primeiro acesso web privado.** O roteamento local e o proxy de implantação devem preservar cookies, origem, status e proteção CSRF; fornecedor, domínio e custo de hospedagem continuam pendentes.
 

@@ -1,15 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Controller, INestApplication, Post } from '@nestjs/common';
+import { Public } from '@nestjs/authentication';
+import { config } from 'dotenv';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { configureHttp } from './../src/http/configure-http.js';
+
+config({ path: '../.env', quiet: true });
 
 let mutations = 0;
 
 @Controller('csrf-probe')
 class CsrfProbeController {
   @Post()
+  @Public()
   mutate() {
     mutations += 1;
     return { mutations };

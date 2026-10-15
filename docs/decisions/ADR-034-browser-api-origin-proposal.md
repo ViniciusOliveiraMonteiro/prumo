@@ -42,6 +42,8 @@ No bootstrap, demonstrar por testes locais de duas aplicações: (1) login via `
 
 A origem única simplifica o contrato do browser e evita configurar CORS com credenciais para o fluxo principal. Em troca, o roteamento se torna parte do caminho de sessão e deve ser testado. Continuam pendentes: proxy e hospedagem de produção, certificado, domínio, compatibilidade de cookies com a biblioteca candidata, política concreta de cache e matriz de permissões por ação. Se o laboratório mostrar que o rewrite local não preserva um requisito, trocar o mecanismo de roteamento local mantendo o contrato público, ou revisar esta decisão.
 
+Em 2026-10-15, o login pelo rewrite local mostrou que o `Host` recebido pela API pode ser o endereço interno. A API passou a usar `PRUMO_PUBLIC_ORIGIN` como origem externa confiável explícita tanto na proteção CSRF quanto na biblioteca de sessão, sem confiar em `X-Forwarded-Host` enviado pelo cliente. Com essa configuração, a conta descartável fez login, leu `/api/auth/me` e saiu pelo caminho público; o mesmo cookie falhou após a revogação e uma origem estrangeira recebeu `403`. `Set-Cookie` e `Cache-Control: no-store` foram preservados. Isso cobre o desenvolvimento local; ainda faltam HTTPS, proxy de implantação, renderização autenticada da web e teste de cache com dois usuários.
+
 ## Fontes técnicas consultadas
 
 - [Next.js: rewrites para URL externa](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) e [self-hosting com proxy reverso](https://nextjs.org/docs/app/guides/self-hosting).

@@ -1,6 +1,14 @@
 import type { INestApplication } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
+import { publicOrigin } from './public-origin.js';
 
 export function configureHttp(app: INestApplication): void {
   app.setGlobalPrefix('api');
-  app.enableCsrfProtection({ trustedOrigins: [] });
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    if (request.path.startsWith('/api/auth')) {
+      response.setHeader('Cache-Control', 'no-store');
+    }
+    next();
+  });
+  app.enableCsrfProtection({ trustedOrigins: [publicOrigin()] });
 }

@@ -1,6 +1,6 @@
 # Preparação do bootstrap da Sprint 3
 
-**Status:** scaffold, roteamento, contrato, PostgreSQL e laboratório técnico executados localmente; CI remota aprovada conforme evidência informada pelo usuário em 2026-10-14; laboratório RLS ampliado para dez testes; reprodução por outra pessoa, autenticação e decisão final de RLS pendentes.
+**Status:** scaffold, roteamento, contrato, PostgreSQL, laboratório técnico e login privado básico executados localmente; CI remota anterior aprovada conforme evidência informada pelo usuário em 2026-10-14. Reprodução por outra pessoa, gates restantes de autenticação e decisão final de RLS pendentes; a CI das alterações atuais ainda não foi conferida.
 
 **Pendente para validação futura (2026-10-14):** o usuário decidiu seguir com os próximos gates sem executar agora o preparo do ambiente por outra pessoa. Antes de concluir a Sprint 3, uma segunda pessoa deve partir de um clone novo, seguir o `README.md` sem ajuda, executar instalação, banco, migração, checks, API e web, e registrar resultado e lacunas do guia. Repetir no mesmo WSL com novo clone serve como ensaio, mas a validação por outra pessoa continua pendente. Esta pendência não bloqueia o estudo técnico de RLS e sessão.
 
@@ -46,6 +46,12 @@ Em 2026-10-15, a API passou a ativar `enableCsrfProtection()` do NestJS 12.1.3 p
 
 Ainda em 2026-10-15, o candidato `@nestjs/authentication` 0.1.1 foi instalado na API. `pnpm --filter prumo-api test:db` passou localmente com **17 testes**: dez do laboratório anterior e sete do contrato oficial de `SessionStore` em schema descartável, com Drizzle e pool PostgreSQL. O teste fica em `prumo-api/test/authentication.db-spec.ts`; cria e remove seu schema. Ele valida o contrato técnico do store, mas não adiciona tabelas de identidade, migração ou autenticação HTTP. O fluxo completo de cookie pelo rewrite, revogação e autorização continua pendente.
 
+Após aprovação da ADR-037 em 2026-10-15, `0002_identity.sql` criou `identity.users` e `identity.sessions`; `0003_session_hash_encoding.sql` corrigiu em nova migração a constraint de ID, pois o primeiro E2E mostrou hash Base64URL, não hexadecimal. Não edite `0002` após aplicada: o runner verifica checksum. O modelo Drizzle, o store da API e os endpoints `/api/auth/sign-in`, `/api/auth/me`, `/api/auth/sign-out` e `/api/auth/sign-out-all` foram integrados. A API consulta usuário ativo a cada request protegida, usa a role `prumo_app` e recusa iniciar se o banco de identidade estiver indisponível. `pnpm --filter prumo-api test:e2e` passou com **7 testes** e `pnpm --filter prumo-api test:db` com **18**, incluindo grants da role restrita. O contrato OpenAPI e os tipos da web foram regenerados.
+
+Da raiz, após copiar `.env.example` para `.env`, configure senhas locais distintas para migrador e aplicação e mantenha `PRUMO_PUBLIC_ORIGIN=http://localhost:3000`. Execute `pnpm --filter prumo-api build`, `pnpm --filter prumo-api db:migrate` e `pnpm --filter prumo-api db:prepare-app`, nessa ordem. O último comando só opera em `prumo_dev` em `127.0.0.1`; cria/atualiza `prumo_app` sem privilégios de owner, superuser ou `BYPASSRLS` e concede acesso às duas tabelas de identidade. Crie a conta inicial com `pnpm --filter prumo-api db:provision-user seu-email@exemplo.com` em terminal local: e-mail é o único argumento e a senha é solicitada sem eco. Não use credenciais ou dados reais nos testes.
+
+No teste manual local, uma conta descartável foi criada por esse comando e removida em seguida. Pelo rewrite de `http://localhost:3000/api`, login, leitura da identidade, logout e reuso do cookie revogado retornaram `200`, `200`, `204` e `401`; uma origem estrangeira retornou `403`. `Set-Cookie` preservou `__Host-sid`, `Path=/`, `HttpOnly`, `Secure`, `SameSite=Lax` e ausência de `Domain`; `Cache-Control: no-store` também foi preservado. O primeiro login via rewrite retornou `403` porque o proxy entregava `Host` interno; `PRUMO_PUBLIC_ORIGIN` passou a ser a origem externa confiável explícita tanto para CSRF como para a sessão, sem aceitar cabeçalhos de host fornecidos pelo cliente como autoridade. O teste é local em HTTP/localhost. Faltam limite de tentativas, troca/recuperação de credencial, contrato do store nas tabelas migradas, proxy HTTPS/staging, cache com dois usuários e autorização por household; não expor dados financeiros antes desses gates.
+
 ## Checks de saída
 
 1. `pnpm install --frozen-lockfile`, lint, typecheck, testes gerados e build passam para web e API pelos scripts da raiz.
@@ -53,7 +59,7 @@ Ainda em 2026-10-15, o candidato `@nestjs/authentication` 0.1.1 foi instalado na
 3. OpenAPI é gerado localmente pela API e os tipos da web são derivados de um único artefato versionado; check detecta artefato desatualizado.
 4. PostgreSQL local e migração inicial funcionam com role de aplicação. Os testes reais da ADR-031 verificam rollback, concorrência, escopo A/B e representação monetária antes do esquema financeiro definitivo.
 5. CI reproduz instalação e checks; configuração local e segredos não entram no Git. O laboratório de RLS da ADR-029 usa role e pool reais antes da decisão sobre RLS.
-6. Fluxos de sessão, cookie, CSRF e cache da ADR-034 e a compatibilidade da biblioteca candidata da ADR-033 continuam gates de implementação próprios; o scaffold sozinho não os satisfaz.
+6. Sessão, cookie e proteção de origem passaram localmente pelo rewrite; repetir com HTTPS/proxy, cache entre usuários e os demais gates de segurança das ADRs 033/034/037 antes de uso externo. O scaffold sozinho não os satisfaz.
 
 ## Fontes técnicas
 
