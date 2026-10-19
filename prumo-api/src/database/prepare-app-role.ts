@@ -43,6 +43,13 @@ try {
   await pool.query(
     'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.sign_in_attempts TO prumo_app',
   );
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.recovery_codes, identity.recovery_attempts TO prumo_app',
+  );
+  await pool.query('GRANT INSERT ON identity.credential_events TO prumo_app');
+  await pool.query(
+    'REVOKE SELECT ON identity.credential_events FROM prumo_app',
+  );
   process.stdout.write('Local application role is ready.\n');
 } finally {
   await pool.end();

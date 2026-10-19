@@ -4,6 +4,7 @@ import {
   check,
   index,
   jsonb,
+  integer,
   pgSchema,
   text,
   timestamp,
@@ -21,6 +22,7 @@ export const users = identity.table(
     email: text('email').notNull(),
     emailNormalized: text('email_normalized').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
+    credentialVersion: integer('credential_version').notNull().default(0),
     active: boolean('active').notNull().default(true),
     createdAt: at('created_at').notNull().defaultNow(),
     updatedAt: at('updated_at').notNull().defaultNow(),
@@ -52,4 +54,16 @@ export const sessions = identity.table(
     check('sessions_id_hash', sql`${table.id} ~ '^[A-Za-z0-9_-]{43}$'`),
     check('sessions_mfa_check', sql`${table.mfa} IN ('pending', 'verified')`),
   ],
+);
+
+export const recoveryCodes = identity.table(
+  'recovery_codes',
+  {
+    codeHash: text('code_hash').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: at('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('recovery_codes_user_id_idx').on(table.userId)],
 );

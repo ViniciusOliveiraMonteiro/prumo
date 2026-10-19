@@ -1,0 +1,90 @@
+# ADR-039: troca e recuperação de senha no acesso privado
+
+- **Status:** troca autenticada e códigos offline pré-MVP aprovados pelo usuário em 2026-10-19 e implementados localmente; fluxo por e-mail aceito como direção para o MVP, com entrega, notificação e parâmetros ainda pendentes; recuperação por operador permanece proposta
+- **Data:** 2026-10-19
+- **Decisões relacionadas:** [ADR-033](ADR-033-authentication-session.md#decisão) exige revogação após alteração crítica; [ADR-037](ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos) aceita provisionamento local da primeira conta; [ADR-038](ADR-038-private-sign-in-attempt-limit-proposal.md#espera-progressiva-em-estudo) deixa os parâmetros de bloqueio pendentes
+
+## Contexto
+
+A API oferece login e logout com sessões revogáveis, troca autenticada de senha e recuperação por código previamente emitido. O comando `db:provision-user` cria apenas usuário novo em `prumo_dev`; não atualiza senha existente. A primeira conta é local e controlada, sem cadastro público nem serviço de e-mail decidido. Um reset fraco pode entregar a um atacante todo o histórico financeiro futuro; bloquear login sem rota de recuperação também pode impedir o titular de voltar à conta.
+
+Esta decisão separa **troca autenticada**, quando o titular ainda sabe a senha, de **recuperação**, quando perdeu o autenticador. O recorte de códigos é privado e local. A direção do fluxo por e-mail foi aceita, mas a entrega e a notificação ainda não foram decididas nem implementadas. Esta decisão não libera acesso externo nem dados financeiros.
+
+## Alternativas
+
+| Opção | Benefício | Limite |
+|---|---|---|
+| Reset por link enviado por e-mail | Escala para usuários remotos | Exige verificar endereço, serviço de envio, token de uso único, expiração, limite e notificações; custo e operação ainda não decididos. |
+| Reset por operador em CLI local | Compatível com a primeira conta sem serviço externo | Depende de verificar a identidade do solicitante e auditar quem autorizou a operação; não serve como recuperação pública. |
+| Códigos de recuperação emitidos previamente | O titular pode recuperar sem e-mail disponível | Precisa de emissão, guarda, rotação e suporte a perda do código antes da primeira utilização. |
+| Apenas trocar senha com sessão ativa | Menor superfície inicial | Não resolve perda da senha e mantém a recuperação como bloqueio para uso real. |
+
+## Proposta para o primeiro acesso privado
+
+1. **Troca autenticada — aprovada:** a operação protegida exige sessão ativa e senha atual, valida origem/CSRF e usa o `PasswordHasher` existente com senha nova de 12 a 1024 caracteres. Atualiza o hash, revoga **todas** as sessões e códigos de recuperação anteriores e apaga falhas de login desse e-mail na mesma transação PostgreSQL; após a resposta, exige novo login e nova emissão de códigos. Não incluir senha em URL, logs ou evento de auditoria. Falha da transação conserva o hash e as sessões anteriores. A confirmação da senha nova em interface fica para quando houver formulário web.
+2. **Códigos pré-MVP — aprovados para uso privado:** a emissão exige sessão e senha atual; a recuperação exige código de uso único e senha nova. Revogar todas as sessões, elevar a versão da credencial e substituir os códigos na mesma transação. Sem canal de notificação verificado, este recorte não satisfaz o gate para usuários externos.
+3. **Perda de senha sem código no laboratório local — proposta:** preparar um comando de operador limitado a `prumo_dev` em `127.0.0.1`, usando a role migradora e senha nova em prompt sem eco. O recorte detalhado abaixo limita esse caminho ao titular que também opera o ambiente; para outra pessoa, continuam pendentes a prova de controle da conta e um canal de notificação. O comando atual de provisionamento não deve ser reutilizado para sobrescrever contas.
+4. **Usuários externos — direção aceita, implementação pendente:** manter a recuperação pública bloqueada até decidir prova de controle da conta, entrega e notificações. Usar resposta uniforme para contas existentes e inexistentes, token aleatório de uso único com expiração, armazenamento protegido, limitação de solicitações e revogação de sessões após reset. A origem do link deve ser configurada, nunca derivada de `Host` não confiável. Avaliar MFA/passkeys e seus próprios caminhos de recuperação antes da abertura pública.
+
+## Proposta detalhada: recuperação da conta local do próprio operador
+
+**Status: proposta para aprovação; nenhum comando de recuperação foi implementado.** O recorte é a conta privada do laboratório quando o titular é a mesma pessoa que controla o terminal WSL, o banco `prumo_dev` e a credencial da role migradora. Acesso de operador ao banco é uma autoridade administrativa, **não** é prova da identidade de outra pessoa. Se titular e operador forem pessoas diferentes, este procedimento não autoriza o reset: é preciso um meio de recuperação previamente vinculado à conta e um canal de notificação confiável.
+
+**Recorte aprovado:** priorizar códigos de recuperação emitidos enquanto o titular ainda conhece a senha e guardados fora da aplicação. O reset local por migrador descrito abaixo é uma proposta administrativa limitada ao laboratório do próprio operador, útil se ainda não houver código. A notificação independente continua necessária antes de uso externo.
+
+1. Criar `db:recover-user` como comando separado de `db:provision-user`, sem rota HTTP. Restringir a execução a terminal interativo, role `prumo_migrator`, host `127.0.0.1` e banco `prumo_dev`; rejeitar outros argumentos além do e-mail. Buscar uma conta ativa pelo e-mail normalizado e mostrar ID e e-mail antes de exigir confirmação digitada do e-mail completo. Não aceitar senha nova por argumento, variável de ambiente ou arquivo, nem imprimi-la.
+2. Pedir senha nova e confirmação em prompt sem eco, com a política de 12 a 1024 caracteres e o `PasswordHasher` já adotados. Exigir uma justificativa curta sem informação pessoal ou segredo. O operador confirma no terminal que é o próprio titular; essa declaração fica no registro, sem ser apresentada como verificação independente de identidade.
+3. Em uma transação PostgreSQL, bloquear a linha do usuário, atualizar o hash e `updated_at`, excluir todas as sessões e limpar as falhas de login desse e-mail. Registrar na mesma transação um evento mínimo de auditoria: ID do evento, usuário afetado, horário, tipo `local_self_recovery`, justificativa e identificador local do operador marcado como **autodeclarado**. Nunca registrar senha, hash, cookie, código ou URL de conexão. Se qualquer etapa falhar, reverter todas. Emitir somente ID do evento e instrução para entrar novamente; não iniciar sessão automaticamente.
+4. A ausência de endereço de notificação verificado significa que o recibo no terminal **não é uma notificação independente**. Antes de permitir recuperação de outra pessoa ou uso externo, vincular e verificar um canal de notificação e decidir a entrega. O registro de auditoria local permite revisão, mas não substitui a notificação ao titular.
+5. Testar conta inexistente/inativa, banco ou role fora do recorte, terminal não interativo, confirmação incorreta, rollback com falha injetada, revogação de múltiplas sessões, limpeza das falhas e duas recuperações concorrentes. Testar também login concorrente ao reset: uma verificação da senha antiga iniciada antes do commit não pode criar depois dele uma sessão que continue válida. A implementação precisará demonstrar essa propriedade; a exclusão de sessões, sozinha, não prova o caso.
+
+**Fluxo recomendado para a conta privada antes de dados reais:** emitir códigos de recuperação de uso único enquanto o titular ainda está autenticado e confirma a senha atual, guardar apenas hashes no banco e mostrar os valores uma única vez para guarda offline. No uso, consumir o código atomicamente, trocar a senha, revogar sessões e outros códigos pendentes conforme a política definida, emitir substituto e registrar o evento. Definir limite de tentativas e testar concorrência. Essa opção permite recuperar sem acesso de migrador, mas exige inscrição prévia e uma decisão de notificação; não recupera retroativamente uma conta que perdeu a senha antes de receber o código. Para usuários externos, comparar esse caminho com código enviado a endereço verificado antes de escolher o fluxo.
+
+## Sequência de produto proposta: pré-MVP e fluxo alvo
+
+**Ordem aprovada pelo usuário:** desenhar primeiro o fluxo alvo para contas de usuários reais; implementar os códigos offline como incremento pré-MVP. A direção foi aceita em 2026-10-19; parâmetros e operação do e-mail ainda não foram aprovados e a abertura pública continua bloqueada.
+
+| Etapa | Papel proposto | Gate antes de usar |
+|---|---|---|
+| Pré-MVP privado | Códigos offline emitidos com sessão e senha atual, apresentados uma vez e guardados pelo titular. | Inscrição, uso único, hash, limitação de tentativas, auditoria, revogação e corrida com login testados; sem usuários externos enquanto faltar notificação. |
+| MVP com usuários externos | Recuperação por endereço de e-mail previamente verificado, com códigos offline como caminho alternativo. | Entrega e notificação operacionais, proteção contra abuso, HTTPS, política para perda simultânea dos canais e revisão de custo aprovadas. |
+| Exceção do laboratório | CLI local por migrador somente quando titular e operador são a mesma pessoa e não há código prévio. | Auditoria e confirmação locais; não serve de suporte para contas externas. |
+
+### Fluxo alvo para o MVP — direção aceita, detalhes pendentes
+
+1. **Preparação da conta:** verificar o endereço de e-mail de recuperação antes de ativá-lo; permitir cadastrar um segundo endereço de notificação verificado. A inscrição e a troca desses endereços exigem sessão válida e nova verificação da credencial. Códigos offline são emitidos separadamente e exibidos uma vez. Definir a política de usuários sem segundo canal antes da abertura externa.
+2. **Solicitação:** a pessoa informa o e-mail. A resposta é uniforme para conta existente e inexistente; limitação por conta e origem confiável impede envio em massa. Para conta elegível, gerar segredo aleatório de uso único, guardar somente seu hash e expiração curta proposta de **30 minutos**, e enviar link HTTPS construído da origem pública configurada. O token não entra em logs, analytics ou cabeçalho `Referer`; a página usa `Referrer-Policy: no-referrer`. Trinta minutos é parâmetro proposto para teste, não decisão.
+3. **Consumo:** o link permite apenas definir e confirmar senha nova. Em uma transação, validar e consumir o token uma vez, atualizar hash e versão da credencial, revogar sessões e outros pedidos de reset, registrar evento de auditoria e preparar notificação para os endereços já verificados. Não criar sessão automaticamente; exigir login normal. A entrega da notificação ocorre por mecanismo com retry e evidência de falha, sem segredos na mensagem.
+4. **Caminho alternativo:** quem perdeu acesso ao e-mail pode usar código offline previamente emitido. O código recebe limitação de tentativas, é consumido uma vez e aciona as mesmas ações de revogação e auditoria. Notificar pelos canais ainda seguros e previamente verificados. Se e-mail e códigos forem perdidos, não fazer reset apenas com dados biográficos ou declaração do operador; definir uma política de prova de titularidade antes de prometer suporte manual.
+5. **Gate técnico e operacional:** testar enumeração, abuso e concorrência de dois tokens, token expirado/reutilizado, falha de entrega, mudança de endereço perto do pedido, sessão e login concorrentes ao reset, rollback e vazamento por URL/cache/log. Validar HTTPS/proxy e custo de envio. A versão da credencial na sessão é candidata para impedir que login com senha antiga iniciado antes do reset mantenha sessão válida; validar compatibilidade com `@nestjs/authentication` antes de fixar o desenho.
+
+O e-mail verificado é uma via prática para o MVP, mas o controle dessa caixa postal passa a ser uma dependência de segurança e operação. O código offline cobre perda de acesso ao e-mail quando foi guardado antes. Para uma conta sem prova de identidade prévia e sem nenhum dos dois meios, não há um reset remoto seguro já definido. O NIST descreve códigos salvos, códigos enviados e contatos de recuperação e exige notificação do evento; a OWASP recomenda resposta uniforme, limitação, token de uso único, origem de link confiável e revogação após o reset. Esta seção é uma aplicação proposta dessas orientações ao Prumo, não uma alegação de conformidade.
+
+## Implementação e gates pendentes
+
+`POST /api/auth/change-password` recebe `currentPassword` e `newPassword` em JSON sob cookie de sessão. Responde `204` e limpa o cookie em caso de sucesso; `401` para sessão ausente ou senha atual incorreta, `400` para corpo inválido e `403` para origem hostil. A API usa atualização condicional pelo hash anterior, de modo que duas trocas simultâneas da mesma senha não possam confirmar ambas. O teste E2E local cobre senha incorreta, CSRF, revogação de duas sessões, limpeza das falhas de login, senha antiga rejeitada, senha nova aceita e duas trocas concorrentes. Em 2026-10-19, um gatilho de teste fez a exclusão das sessões falhar após a atualização do hash; a API respondeu `500`, o hash antigo e a sessão permaneceram válidos, e a senha proposta foi rejeitada. O gatilho foi removido ao fim do teste. Ainda falta repetir a validação em HTTPS/proxy.
+
+O teste controlado do store com PostgreSQL confirma que uma validação iniciada antes da revogação pode terminar com a sessão já lida, mas uma nova validação após a revogação retorna `null`; a atualização tardia de atividade não recria a sessão. Portanto, o commit impede **novas** validações com cookies antigos, mas não cancela uma operação que já ultrapassou a verificação de sessão. Antes de escritas financeiras, a autorização de household e a operação precisam compartilhar um limite transacional que trate essa corrida, conforme a [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo).
+
+A migração `0005_recovery_codes.sql` adicionou `credential_version`. O login grava a versão verificada nos metadados da sessão; a troca de senha e a recuperação incrementam a versão na mesma transação que revoga as sessões. A validação da sessão compara as versões. O E2E com login pausado após verificar a senha antiga confirmou que o cookie emitido após o commit da recuperação é recusado na próxima requisição. Uma operação já autorizada antes do commit ainda pode terminar; a ADR-029 continua responsável pelo limite transacional das futuras escritas financeiras.
+
+**Implementado localmente em 2026-10-19:** `POST /api/auth/recovery-codes` exige sessão, senha atual e origem confiável; responde com oito códigos aleatórios de 128 bits uma vez e substitui o conjunto anterior. `POST /api/auth/recover-with-code` aceita e-mail, código e senha nova; limita falhas por e-mail, consome um código, troca a senha, revoga sessões e demais códigos, limpa contadores de login e recuperação, registra evento e devolve oito códigos substitutos uma vez. A troca autenticada também invalida códigos anteriores. Os códigos são guardados como SHA-256, com `Cache-Control: no-store` nas respostas. O E2E local cobre reposição, código antigo/repetido, conta desconhecida, limite, origem hostil, concorrência, corrida com login e rollback injetado. **Parâmetros provisórios do recorte privado:** oito códigos de 128 bits e cinco falhas por e-mail em 15 minutos; não há limite por origem no proxy nem notificação independente. A interface web e o fluxo de e-mail permanecem pendentes. Códigos de recuperação da senha são separados dos códigos de MFA da biblioteca.
+
+- Aprovar separadamente o procedimento de recuperação local do próprio operador. Para titular diferente do operador, definir prova de controle da conta e canal de notificação antes de permitir reset; o e-mail informado na solicitação, sozinho, não é prova suficiente.
+- No recorte detalhado acima, confirmar que titular e operador são a mesma pessoa. Antes de implementar, definir o formato da tabela de auditoria e demonstrar a corrida entre login e reset sem sessão antiga válida após o commit.
+- Repetir a troca e a revogação no proxy HTTPS, incluindo cache de respostas entre usuários. Tratar a corrida com operação já autorizada ao implementar escritas financeiras.
+- Avaliar limite para repetidas tentativas de senha atual incorreta sem permitir enumeração; a rota exige sessão, mas ainda não tem contador específico. Revisar logs e proteção no proxy HTTPS antes de acesso externo.
+- Não apresentar o comando local como recuperação de usuários externos nem disponibilizar endpoint público de reset antes de aprovar o fluxo de entrega e seus controles.
+
+## Motivos, riscos e conceitos para estudo
+
+A transação conserva a regra de que uma senha nova não convive com sessões antigas válidas após o commit. A CLI local reduz dependência de e-mail no primeiro laboratório, mas transfere a segurança da recuperação para a autenticação do operador, a verificação fora da aplicação e a trilha da execução. A recuperação pública exige operação e custo próprios; um link de reset mal protegido vira uma forma alternativa de login.
+
+Estudar: troca autenticada versus recuperação, prova de controle, token de uso único, revogação transacional, notificações, auditabilidade do operador e corrida com sessão em andamento.
+
+## Referências
+
+- [OWASP, Forgot Password Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html): resposta uniforme, token, revogação e risco de enumeração.
+- [NIST SP 800-63B, Account Recovery](https://pages.nist.gov/800-63-4/sp800-63b.html#account-recovery): métodos de recuperação, prova e notificação.
+- [NIST SP 800-63B, Account Notifications](https://pages.nist.gov/800-63-4/sp800-63b.html#account-notifications): notificação independente de eventos de recuperação.
+- [Caderno, SEC-004](../../CADERNO_DE_ESTUDOS_APLICADO.md#sec-004---senhas-sessões-mfa-e-passkeys).

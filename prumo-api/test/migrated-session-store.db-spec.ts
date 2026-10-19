@@ -227,7 +227,7 @@ test('revocation wins over activity update from an in-flight validation', async 
   } finally {
     releaseTouch();
   }
-  await inFlight;
+  expect(await inFlight).not.toBeNull();
   expect(await service.validate(issued.token)).toBeNull();
   expect(await store.listUserSessions(userId)).toEqual([]);
 });

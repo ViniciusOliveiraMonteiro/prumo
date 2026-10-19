@@ -17,7 +17,13 @@ export class IdentitySessionProvider extends SessionCookieProvider<IdentityUser>
     registry.registerProvider(this);
   }
 
-  protected validate(session: SessionRecord): Promise<IdentityUser | null> {
-    return this.users.findActiveById(session.userId);
+  protected async validate(
+    session: SessionRecord,
+  ): Promise<IdentityUser | null> {
+    const found = await this.users.findActiveById(session.userId);
+    const issuedVersion = session.metadata?.credentialVersion ?? 0;
+    return found && issuedVersion === found.credentialVersion
+      ? found.user
+      : null;
   }
 }

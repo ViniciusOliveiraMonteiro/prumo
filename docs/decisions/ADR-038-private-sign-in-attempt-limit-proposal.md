@@ -31,12 +31,24 @@ O banco guarda SHA-256 do e-mail normalizado como chave do contador, sem senha, 
 
 Uma alternativa ao bloqueio fixo é devolver atrasos curtos após falhas sucessivas, com teto definido. O atraso deve ser aplicado pelo banco ou por resposta `Retry-After`, sem manter uma requisição dormindo na API. A escolha precisa comparar o número de senhas que um atacante consegue testar, o tempo de espera imposto ao titular sob ataque e o custo de rajadas paralelas. A mesma resposta deve valer para e-mail conhecido e desconhecido. Antes de substituir o limiar provisório, especificar a progressão, o teto, a janela, o reset após sucesso e testes de concorrência e recuperação. Esses valores ainda não estão aprovados.
 
+**Comparação para a próxima decisão:**
+
+| Política | Efeito para o titular sob ataque | Limite para quem tenta adivinhar senhas |
+|---|---|---|
+| Protótipo atual: dez falhas em 15 minutos | Pode impedir qualquer login por até 15 minutos. | No fluxo sequencial, permite dez verificações por janela; rajadas concorrentes ainda iniciam hashes antes da contagem. |
+| Espera progressiva isolada | A próxima tentativa volta a ser possível após um atraso limitado. | Um atacante persistente continua tentando indefinidamente, ainda que mais devagar; a proteção contra pulverização continua ausente. |
+| Espera progressiva com teto adicional | Reduz o bloqueio brusco no início e impõe um limite total. | O teto ainda cria bloqueio e exige recuperação segura ou revisão administrativa ao ser atingido. |
+
+**Candidato para experimento, não aprovado:** permitir três falhas seguidas sem espera; após a terceira, impor 15 segundos, depois 30, 60 e no máximo 120 segundos após cada falha seguinte. A contagem zeraria após login válido ou 15 minutos sem falhas, mas um atraso já iniciado continuaria até terminar. Para tentativas sequenciais sem sucesso, esse desenho permitiria aproximadamente 12 verificações nos primeiros 15 minutos, contra dez no protótipo atual; a cifra não é garantia sob concorrência. Exigiria migração nova para representar a última falha e o próximo horário permitido, teste com relógio controlado e uma decisão separada sobre limite acumulado e recuperação. Não alterar a migração `0004` já aplicada.
+
+**Recomendação do estudo:** conservar o protótipo atual durante os testes privados locais. Antes de substituir seu bloqueio, medir rajadas de hash, decidir a [proposta de recuperação de credencial](ADR-039-private-credential-change-recovery-proposal.md#proposta-para-o-primeiro-acesso-privado) e a origem confiável no proxy, e avaliar se o ganho de disponibilidade do candidato compensa as tentativas adicionais. Nenhum dos números acima é prescrito por NIST ou OWASP; são hipóteses para avaliação do Prumo.
+
 ## Limites e gates
 
 - Um atacante pode consumir o orçamento de uma conta e impedir temporariamente seu login. A janela limita a duração; a alternativa de espera progressiva deve ser estudada antes de fixar bloqueio e números para uso real.
 - A consulta anterior ao hash evita trabalho quando a conta já está bloqueada, mas uma rajada simultânea ainda pode iniciar várias verificações de senha antes de registrar as falhas. A atualização atômica preserva o limite de respostas `401`; monitorar esse custo em testes de carga antes de uso externo.
 - O limite por e-mail não impede pulverização entre muitos e-mails. Definir IP confiável na topologia de proxy antes de introduzir um segundo limite; não usar `X-Forwarded-For` enviado diretamente pelo cliente como identidade confiável.
-- Monitoramento agregado de rejeições, limpeza operacional independente de novos logins, troca e recuperação de credencial, HTTPS/proxy/cache e revisão de valores ainda são pendentes antes de usuários externos. Não registrar e-mail, senha ou hash do assunto em logs de abuso.
+- Monitoramento agregado de rejeições, limpeza operacional independente de novos logins, recuperação de credencial, HTTPS/proxy/cache e revisão de valores ainda são pendentes antes de usuários externos. A troca autenticada foi implementada no recorte da ADR-039. Não registrar e-mail, senha ou hash do assunto em logs de abuso.
 - O princípio de contar falhas e limpar após sucesso foi aprovado. Os parâmetros de bloqueio são provisórios e o comportamento está validado apenas localmente; a política para uso real ainda deve ser registrada.
 
 ## Conceitos para estudo
@@ -48,3 +60,5 @@ Janela fixa versus janela deslizante, atualização atômica, limite distribuíd
 - [Plano de Estudos, SEC-010](../../CADERNO_DE_ESTUDOS_APLICADO.md#sec-010---rate-limiting-quotas-e-abuso).
 - [Threat model, TM-31](../security/threat-model.md#ameaças-controles-candidatos-e-evidência-exigida).
 - [ADR-033: autenticação](ADR-033-authentication-session.md#aceite-e-validação-antes-de-dados-financeiros-reais).
+- [NIST SP 800-63B, rate limiting](https://pages.nist.gov/800-63-4/sp800-63b.html#rate-limiting-throttling): limite de falhas, espera crescente como técnica possível e limpeza após autenticação válida.
+- [OWASP, Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#login-throttling): limiar, duração e risco de bloqueio induzido por atacante.

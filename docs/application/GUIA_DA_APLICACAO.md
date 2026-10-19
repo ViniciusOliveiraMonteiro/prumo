@@ -1,6 +1,6 @@
 # Guia da aplicação
 
-**Estado em 2026-10-19:** Prumo está no bootstrap de engenharia. A web mostra uma página inicial estática; a API oferece saúde e login privado com sessão revogável e um protótipo local de limite de tentativas. PostgreSQL, migrações de identidade, contrato OpenAPI e laboratórios técnicos estão disponíveis. Ainda não há formulário de login na web, households persistidos, contas, transações ou indicadores financeiros utilizáveis. As regras financeiras abaixo são decisões para orientar a implementação, não funcionalidades prontas.
+**Estado em 2026-10-19:** Prumo está no bootstrap de engenharia. A web mostra uma página inicial estática; a API oferece saúde, login privado com sessão revogável, troca autenticada de senha e um protótipo local de limite de tentativas. PostgreSQL, migrações de identidade, contrato OpenAPI e laboratórios técnicos estão disponíveis. Ainda não há formulário de login na web, recuperação de senha perdida, households persistidos, contas, transações ou indicadores financeiros utilizáveis. As regras financeiras abaixo são decisões para orientar a implementação, não funcionalidades prontas.
 
 ## Propósito
 
@@ -11,7 +11,7 @@ Prumo pretende reunir os dados financeiros de uma residência para explicar rece
 | Parte | Responsabilidade atual | Situação |
 |---|---|---|
 | `prumo-web/` | Página inicial Next.js; encaminha `/api` e `/api/*` à API local. | Bootstrap funcional, sem formulário de login ou telas financeiras. |
-| `prumo-api/` | Saúde, login privado, sessão revogável, proteção de origem e OpenAPI. | Autentica usuário, sem autorização de household ou endpoints financeiros. |
+| `prumo-api/` | Saúde, login privado, troca autenticada de senha, sessão revogável, proteção de origem e OpenAPI. | Autentica usuário, sem recuperação de senha perdida, autorização de household ou endpoints financeiros. |
 | PostgreSQL local | Migrações de verificação e identidade; laboratórios de transações/RLS. | Não contém esquema financeiro de produto. |
 | `contracts/openapi.json` e tipos gerados na web | Contrato HTTP derivado da API. | Contém apenas o contrato implementado; mudanças exigem geração e check. |
 
@@ -28,7 +28,7 @@ O [estado atual da sprint](../planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-3--boo
 | Contrato | OpenAPI gerado pela API e tipos derivados para a web | [ADR-032, decisão](../decisions/ADR-032-web-api-contract.md#decisão) |
 | Navegador | Uma origem: páginas na web e `/api` na API | [ADR-034, decisão](../decisions/ADR-034-browser-api-origin-proposal.md#decisão) |
 
-Sessões revogáveis em PostgreSQL sob autoridade da API e o [modelo mínimo de identidade](../decisions/ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos) foram aprovados e implementados para o primeiro acesso privado. Os testes locais cobrem login, logout e cookie pelo rewrite; [ADR-033](../decisions/ADR-033-authentication-session.md#consequências-e-pendências) registra os gates restantes. A [ADR-038](../decisions/ADR-038-private-sign-in-attempt-limit-proposal.md#alternativas-e-proposta) aprovou contar falhas e limpar após login válido. O protótipo local responde `429` com `Retry-After` após dez falhas por e-mail em 15 minutos; os parâmetros ainda exigem revisão. A API rejeita mutações de origem hostil, mas sessão não concede acesso financeiro. A baseline de isolamento por household está na [ADR-029](../decisions/ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo). RLS é uma [proposta com gates pendentes](../decisions/ADR-036-row-level-security-proposal.md#gates-antes-da-decisão-final), sem aprovação para uso de produto.
+Sessões revogáveis em PostgreSQL sob autoridade da API e o [modelo mínimo de identidade](../decisions/ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos) foram aprovados e implementados para o primeiro acesso privado. Os testes locais cobrem login, logout e cookie pelo rewrite; [ADR-033](../decisions/ADR-033-authentication-session.md#consequências-e-pendências) registra os gates restantes. A [ADR-038](../decisions/ADR-038-private-sign-in-attempt-limit-proposal.md#alternativas-e-proposta) aprovou contar falhas e limpar após login válido. O protótipo local responde `429` com `Retry-After` após dez falhas por e-mail em 15 minutos; os parâmetros ainda exigem revisão. A [ADR-039](../decisions/ADR-039-private-credential-change-recovery-proposal.md#implementação-e-gates-pendentes) aprovou a troca autenticada, implementada na API com revogação global; a recuperação continua proposta. A API rejeita mutações de origem hostil, mas sessão não concede acesso financeiro. A baseline de isolamento por household está na [ADR-029](../decisions/ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo). RLS é uma [proposta com gates pendentes](../decisions/ADR-036-row-level-security-proposal.md#gates-antes-da-decisão-final), sem aprovação para uso de produto.
 
 ## Regras de negócio aprovadas
 
@@ -72,7 +72,7 @@ Requisitos: Linux/WSL 2, Node.js `24.21.0` ou versão compatível com `>=24.21.0
    pnpm dev:web
    ```
 
-4. Abra `http://localhost:3000`. `http://localhost:3000/api/health` deve responder `{"status":"ok"}` pelo encaminhamento à API. Para criar a conta privada inicial, use `pnpm --filter prumo-api db:provision-user seu-email@exemplo.com` em um terminal; a senha será solicitada sem eco. A web ainda não oferece formulário: o contrato HTTP implementado está em `/api/auth/sign-in`, `/api/auth/me`, `/api/auth/sign-out` e `/api/auth/sign-out-all`. A API escuta localmente em `127.0.0.1:3001`; o PostgreSQL em `127.0.0.1:54329`.
+4. Abra `http://localhost:3000`. `http://localhost:3000/api/health` deve responder `{"status":"ok"}` pelo encaminhamento à API. Para criar a conta privada inicial, use `pnpm --filter prumo-api db:provision-user seu-email@exemplo.com` em um terminal; a senha será solicitada sem eco. A web ainda não oferece formulário: o contrato HTTP implementado inclui `/api/auth/sign-in`, `/api/auth/me`, `/api/auth/sign-out`, `/api/auth/sign-out-all`, `/api/auth/change-password`, `/api/auth/recovery-codes` e `/api/auth/recover-with-code`. A emissão dos códigos exige sessão e senha atual; o consumo de um código troca a senha, revoga sessões e retorna códigos substitutos para guardar offline. O recorte é privado pré-MVP, sem e-mail ou notificação independente. A API escuta localmente em `127.0.0.1:3001`; o PostgreSQL em `127.0.0.1:54329`.
 
 Se o teste de banco retornar `ECONNREFUSED` em `127.0.0.1:54329`, confira `docker compose ps` e inicie `postgres` com o comando acima. O laboratório `test:db` usa o banco local e cria e remove schema e roles próprios; não o aponte para outro banco.
 
@@ -84,7 +84,7 @@ Se o teste de banco retornar `ECONNREFUSED` em `127.0.0.1:54329`, confira `docke
 | `pnpm format:check` | Formatação dos arquivos de código cobertos pelo script. |
 | `pnpm typecheck` | Tipos das duas aplicações. |
 | `pnpm test` | Testes unitários configurados nas aplicações. |
-| `pnpm --filter prumo-api test:e2e` | Rotas da API, sessão, revogação, proteção de origem e limite de tentativas; requer migração e role local. |
+| `pnpm --filter prumo-api test:e2e` | Rotas da API, sessão, troca/recuperação de senha, revogação, proteção de origem e limites de tentativas; requer migração e role local. |
 | `pnpm --filter prumo-api test:db` | Laboratórios e grants com PostgreSQL local ativo. |
 | `pnpm contract:check` | OpenAPI e tipos gerados sincronizados. |
 | `pnpm build` | Builds da web e da API. |
@@ -99,7 +99,7 @@ Após mudar o contrato HTTP da API, execute `pnpm contract:generate` na raiz e v
 | O que está em andamento | [Plano de desenvolvimento, Sprint 3](../planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-3--bootstrap-de-engenharia). |
 | Preparação e validação local | [Bootstrap, criação e integração](../operations/BOOTSTRAP_SPRINT_3.md#criação-e-integração) e [checks de saída](../operations/BOOTSTRAP_SPRINT_3.md#checks-de-saída). |
 | Exemplos de regras financeiras | [Transferência e investimento](../domain/financial-examples.md#1-salário-transferência-e-investimento-dom-001003), [saldo inicial](../domain/financial-examples.md#2-saldo-inicial-e-reconciliação-dom-002) e [compra no cartão](../domain/financial-examples.md#3-compra-no-cartão-fechamento-e-pagamento-dom-001004). |
-| Acesso e isolamento | [ADR-037, identidade privada](../decisions/ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos), [ADR-038, limite de login](../decisions/ADR-038-private-sign-in-attempt-limit-proposal.md#alternativas-e-proposta), [ADR-029, isolamento](../decisions/ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo), [threat model](../security/threat-model.md#ameaças-controles-candidatos-e-evidência-exigida) e [ADR-036, gates de RLS](../decisions/ADR-036-row-level-security-proposal.md#gates-antes-da-decisão-final). |
+| Acesso e isolamento | [ADR-037, identidade privada](../decisions/ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos), [ADR-038, limite de login](../decisions/ADR-038-private-sign-in-attempt-limit-proposal.md#alternativas-e-proposta), [ADR-039, troca e códigos pré-MVP](../decisions/ADR-039-private-credential-change-recovery-proposal.md#implementação-e-gates-pendentes), [ADR-029, isolamento](../decisions/ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo), [threat model](../security/threat-model.md#ameaças-controles-candidatos-e-evidência-exigida) e [ADR-036, gates de RLS](../decisions/ADR-036-row-level-security-proposal.md#gates-antes-da-decisão-final). |
 | Estudos aplicados | [Plano de Estudos](../../PLANO_DE_ESTUDOS_APLICADO.md) e [Caderno](../../CADERNO_DE_ESTUDOS_APLICADO.md). |
 | Como registrar mudanças | [Guia de manutenção, responsabilidades por mudança](../documentation/GUIA_DE_MANUTENCAO.md#o-que-atualizar-em-cada-mudança) e [revisão antes de concluir](../documentation/GUIA_DE_MANUTENCAO.md#revisão-antes-de-concluir). |
 

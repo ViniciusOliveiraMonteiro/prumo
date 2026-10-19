@@ -6,6 +6,10 @@ import { IdentityDatabase } from './identity.database.js';
 const WINDOW_SECONDS = 15 * 60;
 const MAX_ATTEMPTS = 10;
 
+export function hashSignInSubject(email: string): string {
+  return createHash('sha256').update(email).digest('hex');
+}
+
 @Injectable()
 export class SignInAttemptsService {
   constructor(private readonly database: IdentityDatabase) {}
@@ -15,7 +19,7 @@ export class SignInAttemptsService {
       SELECT greatest(1, ceil(extract(epoch from
         window_started_at + interval '15 minutes' - now())))::integer AS retry_after
       FROM identity.sign_in_attempts
-      WHERE subject_hash = ${this.subjectHash(email)}
+      WHERE subject_hash = ${hashSignInSubject(email)}
         AND attempts >= ${MAX_ATTEMPTS}
         AND window_started_at > now() - interval '15 minutes'
     `);
@@ -33,7 +37,7 @@ export class SignInAttemptsService {
     }>(sql`
       INSERT INTO identity.sign_in_attempts AS current
         (subject_hash, window_started_at, attempts)
-      VALUES (${this.subjectHash(email)}, now(), 1)
+      VALUES (${hashSignInSubject(email)}, now(), 1)
       ON CONFLICT (subject_hash) DO UPDATE SET
         window_started_at = CASE
           WHEN current.window_started_at <= now() - interval '15 minutes'
@@ -54,11 +58,7 @@ export class SignInAttemptsService {
   async clear(email: string): Promise<void> {
     await this.database.db.execute(sql`
       DELETE FROM identity.sign_in_attempts
-      WHERE subject_hash = ${this.subjectHash(email)}
+      WHERE subject_hash = ${hashSignInSubject(email)}
     `);
-  }
-
-  private subjectHash(email: string): string {
-    return createHash('sha256').update(email).digest('hex');
   }
 }

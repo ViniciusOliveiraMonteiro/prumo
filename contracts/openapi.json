@@ -135,6 +135,132 @@
           "identity"
         ]
       }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "operationId": "IdentityController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/recovery-codes": {
+      "post": {
+        "operationId": "IdentityController_issueRecoveryCodes",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueRecoveryCodesBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/recover-with-code": {
+      "post": {
+        "operationId": "IdentityController_recoverWithCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverWithCodeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "429": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "identity"
+        ]
+      }
     }
   },
   "info": {
@@ -198,6 +324,74 @@
         "required": [
           "id",
           "email"
+        ]
+      },
+      "ChangePasswordBody": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "format": "password"
+          },
+          "newPassword": {
+            "type": "string",
+            "format": "password",
+            "minLength": 12,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "IssueRecoveryCodesBody": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "currentPassword"
+        ]
+      },
+      "RecoveryCodesResponse": {
+        "type": "object",
+        "properties": {
+          "codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "codes"
+        ]
+      },
+      "RecoverWithCodeBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "person@example.com"
+          },
+          "code": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "format": "password",
+            "minLength": 12,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "newPassword"
         ]
       }
     }
