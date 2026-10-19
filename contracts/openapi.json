@@ -53,6 +53,9 @@
           },
           "403": {
             "description": ""
+          },
+          "429": {
+            "description": "Tentativas excessivas; consulte Retry-After."
           }
         },
         "tags": [

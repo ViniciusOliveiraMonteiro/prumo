@@ -40,6 +40,9 @@ try {
   await pool.query(
     'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.users, identity.sessions TO prumo_app',
   );
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.sign_in_attempts TO prumo_app',
+  );
   process.stdout.write('Local application role is ready.\n');
 } finally {
   await pool.end();

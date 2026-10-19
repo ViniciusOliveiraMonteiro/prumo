@@ -159,6 +159,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Tentativas excessivas; consulte Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     IdentityController_me: {

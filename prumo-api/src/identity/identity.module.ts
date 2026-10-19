@@ -5,6 +5,7 @@ import { IdentityController } from './identity.controller.js';
 import { IdentityDatabase } from './identity.database.js';
 import { IdentitySessionProvider } from './identity-session.provider.js';
 import { IdentityUserRepository } from './identity-user.repository.js';
+import { SignInAttemptsService } from './sign-in-attempts.service.js';
 import { publicOrigin } from '../http/public-origin.js';
 
 @Module({
@@ -17,6 +18,7 @@ import { publicOrigin } from '../http/public-origin.js';
   providers: [
     IdentityDatabase,
     IdentityUserRepository,
+    SignInAttemptsService,
     DrizzleSessionStore,
     IdentitySessionProvider,
   ],
