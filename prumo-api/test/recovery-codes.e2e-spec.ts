@@ -250,4 +250,4 @@ test('one concurrent redemption wins and a foreign origin is refused', async () 
     401,
   );
   await signIn('password-after-change').expect(200);
-});
+}, 15_000);

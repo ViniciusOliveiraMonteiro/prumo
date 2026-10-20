@@ -132,11 +132,20 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     configureHttp(app);
     await app.listen(0, '127.0.0.1');
     const apiPort = (app.getHttpServer().address() as { port: number }).port;
+    const nextEnv = {
+      ...process.env,
+      PRUMO_API_INTERNAL_ORIGIN: `http://127.0.0.1:${apiPort}`,
+    };
+    execFileSync('pnpm', ['build'], {
+      cwd: webDir,
+      env: nextEnv,
+      stdio: 'ignore',
+    });
     next = spawn(
       process.execPath,
       [
         'node_modules/next/dist/bin/next',
-        'dev',
+        'start',
         '-p',
         String(webPort),
         '-H',
@@ -144,10 +153,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
       ],
       {
         cwd: webDir,
-        env: {
-          ...process.env,
-          PRUMO_API_INTERNAL_ORIGIN: `http://127.0.0.1:${apiPort}`,
-        },
+        env: nextEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
       },
     );
@@ -162,7 +168,9 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
       (incoming, outgoing) => {
         const cacheKey =
           incoming.method === 'GET' &&
-          (incoming.url === '/api/auth/me' || incoming.url === '/__cache_probe')
+          (incoming.url === '/api/auth/me' ||
+            incoming.url === '/conta' ||
+            incoming.url === '/__cache_probe')
             ? incoming.url
             : undefined;
         const cached = cacheKey ? sharedCache.get(cacheKey) : undefined;
@@ -323,6 +331,24 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     };
     const firstCookie = await signIn(people[0]);
     const secondCookie = await signIn(people[1]);
+    for (const [person, cookie, other] of [
+      [people[0], firstCookie, people[1]],
+      [people[1], secondCookie, people[0]],
+    ] as const) {
+      const page = await call('/conta', 'GET', undefined, cookie);
+      expect(page.status).toBe(200);
+      expect(page.headers['cache-control']).toContain('no-store');
+      expect(page.body).toContain(person.email);
+      expect(page.body).not.toContain(other.email);
+    }
+    const anonymousPage = await call('/conta');
+    expect(anonymousPage.status).toBe(200);
+    expect(anonymousPage.headers['cache-control']).toContain('no-store');
+    expect(anonymousPage.body).toContain('Você não está conectado.');
+    expect(anonymousPage.body).not.toContain(people[0].email);
+    expect(anonymousPage.body).not.toContain(people[1].email);
+    expect(sharedCache.size).toBe(0);
+    expect(cacheHits).toBe(0);
     for (const [person, cookie] of [
       [people[0], firstCookie],
       [people[1], secondCookie],
@@ -359,6 +385,10 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     expect(
       (await call('/api/auth/me', 'GET', undefined, firstCookie)).status,
     ).toBe(401);
+    const revokedPage = await call('/conta', 'GET', undefined, firstCookie);
+    expect(revokedPage.status).toBe(200);
+    expect(revokedPage.body).toContain('Você não está conectado.');
+    expect(revokedPage.body).not.toContain(people[0].email);
     expect(
       (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
     ).toBe(200);

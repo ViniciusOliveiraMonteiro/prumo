@@ -72,6 +72,8 @@ O mesmo teste foi ampliado em 2026-10-20 para emissão de códigos, troca autent
 
 Ainda em 2026-10-20, o proxy temporário do teste recebeu um cache compartilhado simulado para `GET /api/auth/me`, com chave apenas por caminho. Ele só armazena respostas sem `no-store`, `no-cache`, `private` ou `Set-Cookie`. Um caminho público sintético confirmou que o cache armazena e reutiliza uma resposta permitida; duas sessões distintas e uma leitura anônima receberam suas próprias respostas, sem entrada nem hit de identidade nesse cache. O teste direcionado e `pnpm --filter prumo-api test:e2e` passaram; a suíte contou **20 testes em seis arquivos**. A simulação verifica o contrato local dos cabeçalhos; o cache do proxy de staging ainda não foi escolhido nem testado.
 
+Em 2026-10-20, a página `/conta` passou a consultar a identidade na API durante a renderização no servidor. O E2E direcionado agora constrói a web para produção, inicia `next start` atrás do proxy HTTPS local e verifica que dois cookies renderizam apenas seus respectivos e-mails; acesso anônimo e cookie revogado não renderizam identidade. `Cache-Control: private, no-store` impede que o cache compartilhado simulado armazene a página. O teste direcionado e a suíte E2E completa passaram, com **20 testes em seis arquivos**. O caso existente de recuperação concorrente recebeu timeout direcionado de 15 segundos após exceder cinco segundos na primeira execução completa com a compilação da web. A CI desta ampliação ainda precisa ser conferida. O teste constrói a web automaticamente e requer PostgreSQL local migrado, role da aplicação, Next.js e `openssl`.
+
 ## Checks de saída
 
 1. `pnpm install --frozen-lockfile`, lint, typecheck, testes gerados e build passam para web e API pelos scripts da raiz.
@@ -79,7 +81,7 @@ Ainda em 2026-10-20, o proxy temporário do teste recebeu um cache compartilhado
 3. OpenAPI é gerado localmente pela API e os tipos da web são derivados de um único artefato versionado; check detecta artefato desatualizado.
 4. PostgreSQL local e migração inicial funcionam com role de aplicação. Os testes reais da ADR-031 verificam rollback, concorrência, escopo A/B e representação monetária antes do esquema financeiro definitivo.
 5. CI reproduz instalação e checks; configuração local e segredos não entram no Git. O laboratório de RLS da ADR-029 usa role e pool reais antes da decisão sobre RLS.
-6. Sessão, cookie e proteção de origem passaram localmente pelo rewrite e pelo proxy TLS descartável; repetir em staging com o proxy escolhido, cache intermediário, renderização autenticada e os demais gates de segurança das ADRs 033/034/037 antes de uso externo. O scaffold sozinho não os satisfaz.
+6. Sessão, cookie, proteção de origem e renderização autenticada mínima passaram localmente pelo rewrite e pelo proxy TLS descartável; repetir em staging com o proxy escolhido, cache intermediário e os demais gates de segurança das ADRs 033/034/037 antes de uso externo. O scaffold sozinho não os satisfaz.
 
 ## Fontes técnicas
 

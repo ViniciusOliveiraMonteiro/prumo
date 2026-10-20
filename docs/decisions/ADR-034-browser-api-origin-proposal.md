@@ -48,6 +48,8 @@ Em 2026-10-20, um teste E2E local acrescentou TLS com certificado temporário, p
 
 No mesmo teste, o proxy local passou a simular um cache compartilhado para `GET /api/auth/me`, usando apenas o caminho como chave e respeitando `no-store`, `no-cache` e `private`. Uma resposta pública sintética foi armazenada e reutilizada como controle positivo; a leitura com dois cookies e a leitura anônima não criaram entrada nem hit de cache. Esse caso detecta regressões de cabeçalho que poderiam reutilizar uma identidade entre contas; o comportamento do cache de staging continua pendente.
 
+Em 2026-10-20, `/conta` passou a consultar `/api/auth/me` na renderização do servidor, encaminhando somente o cookie de sessão e usando `fetch` sem cache. A rota recebe `Cache-Control: private, no-store`. O E2E com build de produção do Next.js, proxy HTTPS local e cache compartilhado simulado confirmou e-mails separados para duas sessões, ausência de identidade na página anônima e após logout e nenhuma entrada de `/conta` no cache. O modo de desenvolvimento do Next.js respondeu `no-cache, must-revalidate`, por isso o teste de isolamento da página usa o build de produção. Ainda faltam validação no proxy/cache de staging e política para futuras páginas com dados financeiros.
+
 ## Fontes técnicas consultadas
 
 - [Next.js: rewrites para URL externa](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) e [self-hosting com proxy reverso](https://nextjs.org/docs/app/guides/self-hosting).
