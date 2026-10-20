@@ -169,7 +169,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
         const cacheKey =
           incoming.method === 'GET' &&
           (incoming.url === '/api/auth/me' ||
-            incoming.url === '/conta' ||
+            incoming.url?.split('?')[0] === '/conta' ||
             incoming.url === '/__cache_probe')
             ? incoming.url
             : undefined;
@@ -239,6 +239,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
       body?: object,
       cookie?: string,
       origin?: string,
+      extraHeaders?: Record<string, string>,
     ) => {
       const payload = body ? JSON.stringify(body) : undefined;
       return new Promise<{
@@ -258,6 +259,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
               ...(payload ? { 'content-type': 'application/json' } : {}),
               ...(cookie ? { cookie } : {}),
               ...(origin ? { origin } : {}),
+              ...extraHeaders,
             },
           },
           (response) => {
@@ -347,6 +349,34 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     expect(anonymousPage.body).toContain('Você não está conectado.');
     expect(anonymousPage.body).not.toContain(people[0].email);
     expect(anonymousPage.body).not.toContain(people[1].email);
+    const callFlight = async (cookie?: string) => {
+      let path = '/conta';
+      for (let redirect = 0; redirect < 3; redirect++) {
+        const response = await call(path, 'GET', undefined, cookie, undefined, {
+          RSC: '1',
+        });
+        expect(response.headers['cache-control']).toContain('no-store');
+        if (response.status !== 307) return response;
+        const location = response.headers.location;
+        if (typeof location !== 'string' || !/^\/conta(?:\?|$)/.test(location))
+          throw new Error('Unexpected RSC redirect');
+        path = location;
+      }
+      throw new Error('RSC redirect limit exceeded');
+    };
+    for (const [person, cookie, other] of [
+      [people[0], firstCookie, people[1]],
+      [people[1], secondCookie, people[0]],
+    ] as const) {
+      const flight = await callFlight(cookie);
+      expect(flight.status).toBe(200);
+      expect(flight.body).toContain(person.email);
+      expect(flight.body).not.toContain(other.email);
+    }
+    const anonymousFlight = await callFlight();
+    expect(anonymousFlight.status).toBe(200);
+    expect(anonymousFlight.body).not.toContain(people[0].email);
+    expect(anonymousFlight.body).not.toContain(people[1].email);
     expect(sharedCache.size).toBe(0);
     expect(cacheHits).toBe(0);
     for (const [person, cookie] of [

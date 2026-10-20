@@ -50,6 +50,8 @@ No mesmo teste, o proxy local passou a simular um cache compartilhado para `GET 
 
 Em 2026-10-20, `/conta` passou a consultar `/api/auth/me` na renderização do servidor, encaminhando somente o cookie de sessão e usando `fetch` sem cache. A rota recebe `Cache-Control: private, no-store`. O E2E com build de produção do Next.js, proxy HTTPS local e cache compartilhado simulado confirmou e-mails separados para duas sessões, ausência de identidade na página anônima e após logout e nenhuma entrada de `/conta` no cache. O modo de desenvolvimento do Next.js respondeu `no-cache, must-revalidate`, por isso o teste de isolamento da página usa o build de produção. Ainda faltam validação no proxy/cache de staging e política para futuras páginas com dados financeiros.
 
+O E2E local passou também a pedir `/conta` como conteúdo RSC usado na navegação do Next.js. O redirecionamento canônico e a resposta final conservaram `no-store`; duas sessões receberam apenas o próprio e-mail e a requisição anônima não recebeu identidade. O cache compartilhado simulado não armazenou essas respostas. O [roteiro de preparação de staging](../operations/BOOTSTRAP_SPRINT_3.md#preparação-do-gate-de-staging) separa essa evidência local da validação ainda pendente no proxy implantado.
+
 ## Fontes técnicas consultadas
 
 - [Next.js: rewrites para URL externa](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) e [self-hosting com proxy reverso](https://nextjs.org/docs/app/guides/self-hosting).
