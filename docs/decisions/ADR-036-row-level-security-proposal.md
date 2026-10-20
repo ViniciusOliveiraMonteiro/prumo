@@ -5,7 +5,7 @@
 
 ## Contexto
 
-A ADR-029 já exige autenticação, autorização por ação e recurso, consultas escopadas pelo household e vínculos íntegros no banco. Ela deixou RLS pendente até um laboratório com a role e o pool da aplicação. O primeiro laboratório cobriu operações A/B; esta revisão acrescentou owner, `BYPASSRLS`, reuso de conexão e um job sintético. Ainda não existem sessão, membership, tabelas financeiras ou worker de produto.
+A ADR-029 já exige autenticação, autorização por ação e recurso, consultas escopadas pelo household e vínculos íntegros no banco. Ela deixou RLS pendente até um laboratório com a role e o pool da aplicação. O primeiro laboratório cobriu operações A/B; esta revisão acrescentou owner, `BYPASSRLS`, reuso de conexão e um job sintético. Sessão revogável e role `prumo_app` existem no recorte privado local; **membership, tabelas financeiras e worker de produto ainda não existem**. Por isso, o laboratório não demonstra a passagem de um household autorizado da API até uma transação financeira.
 
 ## Alternativas e proposta
 
@@ -27,15 +27,15 @@ Em PostgreSQL 18.6 local, `pnpm --filter prumo-api test:db` passou com **10 test
 - o pool de um job sintético reutiliza a mesma conexão sem conservar o contexto definido na transação anterior;
 - a própria role de aplicação pode definir B e então ler B: RLS não substitui autorização da API.
 
-O laboratório usa dados descartáveis e roles criadas pelo usuário migrador local. Ele não prova integração com sessão, revogação, worker real, todas as tabelas futuras ou comportamento em produção. A CI remota informada como aprovada antecede esta alteração; os dez testes ainda precisam passar na CI de um commit que os inclua.
+O laboratório usa dados descartáveis e roles criadas pelo usuário migrador local. Ele não prova integração com sessão, revogação de membership, worker real, todas as tabelas futuras ou comportamento em produção. Em 2026-10-20, o usuário confirmou o job `checks` verde da [CI do commit `684c53d`](https://github.com/ViniciusOliveiraMonteiro/prumo/actions/runs/39483065072), que inclui o laboratório de banco; informou 26 testes de banco aprovados. Os logs privados não foram inspecionados nesta sessão. Essa CI confirma a execução do laboratório publicado, não os gates de autorização ainda ausentes.
 
 ## Gates antes da decisão final
 
-- Definir e testar a passagem de contexto autorizado da API até a transação, inclusive revogação e falha de autorização.
+- Na Sprint 4, revisar a [ADR-041 proposta](ADR-041-household-authorization-boundary-proposal.md#fluxo-proposto-para-validação), definir membership e permissão por ação; testar a passagem do household autorizado pela API até a **mesma transação e conexão** das consultas. Uma sessão válida sem membership ativa, uma revogação e uma falha de autorização devem impedir a operação. Para escrita concorrente à revogação, demonstrar a ordem transacional exigida pela [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo).
 - Definir as roles de migração, aplicação e jobs sem conceder owner ou `BYPASSRLS` ao caminho comum; testar seus grants e a ausência de contexto no pool reutilizado.
 - Desenhar policies e constraints do primeiro esquema financeiro, incluindo operações com vínculos e consultas agregadas; testar A/B por API e SQL.
 - Especificar e testar jobs por household e exceções administrativas, com auditoria. Reavaliar custo operacional e desempenho no fluxo real.
-- Aprovar ou rejeitar esta proposta em ADR antes de expor dados financeiros a usuários externos, conforme ADR-029.
+- Aprovar ou rejeitar esta proposta em ADR após a evidência do primeiro fluxo financeiro e antes de expor dados financeiros a usuários externos, conforme ADR-029. O laboratório isolado não basta para marcar a proposta como aceita.
 
 ## Conceitos para estudo
 
