@@ -132,7 +132,7 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Autenticação | DEFINIDO para primeiro acesso web privado | ADR-033 aceita autoridade no NestJS e sessão revogável em PostgreSQL; ADR-037 aprova identidade mínima e provisionamento local. Login básico foi implementado, com gates de segurança ainda pendentes. |
 | Topologia web/API no navegador | DEFINIDO para primeiro acesso web privado | ADR-034 aceita origem única, com páginas no Next.js e `/api` na API NestJS; hospedagem e proxy de implantação seguem pendentes. |
 | Multi-user | DEFINIDO conceitualmente | Household + memberships. Implementação detalhada pendente. |
-| Infra cloud | NÃO DEFINIDO | Comparar Vercel + provedor backend vs cloud unificada. |
+| Infra cloud | NÃO DEFINIDO | Comparar Vercel + provedor backend vs cloud unificada para produção. A [ADR-040](docs/decisions/ADR-040-staging-gate-infrastructure-proposal.md#alternativas) propõe opções apenas para um futuro gate de staging, sem implantar ou definir provedor. |
 | Observabilidade | HIPÓTESE | OpenTelemetry + error tracking + logs estruturados. |
 | IA | DEFINIDO conceitualmente | Não é fonte de verdade; opera sobre tools e dados calculados. |
 | Open Finance | FUTURO | Integração posterior, após MVP e validação de requisitos/regulação. |
