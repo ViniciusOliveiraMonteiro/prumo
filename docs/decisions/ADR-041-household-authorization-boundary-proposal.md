@@ -45,6 +45,10 @@ A matriz é hipótese de trabalho derivada dos papéis sugeridos no Plano Mestre
 - Testar no PostgreSQL real com `prumo_app`, pool e transações; verificar falha fechada sem contexto, grants, integridade dos vínculos, resposta sem enumeração de recurso e ausência de permissões antigas em cache.
 - Só depois conectar a decisão de RLS da ADR-036 ao primeiro esquema financeiro. Aprovação desta proposta, sozinha, não conclui os gates acima.
 
+## Evidência técnica inicial
+
+Em 2026-10-20, `prumo-api/test/database.db-spec.ts` ganhou um ensaio descartável com `membership_probe` e duas conexões da role de laboratório. Quando a escrita toma `FOR SHARE` primeiro, uma revogação concorrente recebe `lock_timeout`; após o commit da escrita, a revogação pode confirmar. Na ordem inversa, a revogação segura a linha, a leitura bloqueada não prossegue e, após o commit da revogação, encontra `active = false`. O arquivo completo passou localmente com **11 testes** no PostgreSQL. Esse teste comprova o conflito de bloqueios no banco; ainda não há serviço de autorização, membership de produto, API ou efeito financeiro real. A CI desse incremento permanece pendente.
+
 ## Pendências e conceitos para estudo
 
 Continuam pendentes esquema físico, formato do contexto interno, matriz final, fluxo de convites, auditoria, política de erros HTTP, desempenho e política de jobs. Não criar tabelas ou endpoints de household até revisar essas decisões. A implantação em homologação ou produção continua adiada e não é requisito para o laboratório local.

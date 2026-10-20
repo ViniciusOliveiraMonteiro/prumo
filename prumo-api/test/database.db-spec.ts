@@ -61,8 +61,19 @@ beforeAll(async () => {
       target_id integer NOT NULL,
       FOREIGN KEY (household_id, target_id) REFERENCES ${schema}.targets (household_id, id)
     );
+    CREATE TABLE ${schema}.membership_probe (
+      user_id text NOT NULL,
+      household_id text NOT NULL,
+      active boolean NOT NULL,
+      PRIMARY KEY (user_id, household_id)
+    );
+    CREATE TABLE ${schema}.membership_effect_probe (
+      household_id text NOT NULL,
+      marker text NOT NULL
+    );
     INSERT INTO ${schema}.versions VALUES (1, 0);
     INSERT INTO ${schema}.targets VALUES ('A', 1), ('B', 2);
+    INSERT INTO ${schema}.membership_probe VALUES ('actor', 'A', true);
     ALTER TABLE ${schema}.probe_records ENABLE ROW LEVEL SECURITY;
     CREATE POLICY household_scope ON ${schema}.probe_records
       USING (household_id = current_setting('prumo.household_id', true))
@@ -260,6 +271,69 @@ test('RLS context alone does not prove actor authorization', async () => {
     await client.query('ROLLBACK');
   } finally {
     client.release();
+  }
+});
+
+test('membership row lock orders a write and concurrent revocation', async () => {
+  const writer = await app.connect();
+  const revoker = await app.connect();
+  try {
+    await writer.query('BEGIN');
+    const membership = await writer.query<{ active: boolean }>(
+      `SELECT active FROM ${schema}.membership_probe WHERE user_id = 'actor' AND household_id = 'A' FOR SHARE`,
+    );
+    expect(membership.rows[0].active).toBe(true);
+    await writer.query(
+      `INSERT INTO ${schema}.membership_effect_probe VALUES ('A', 'write-before-revocation')`,
+    );
+
+    await revoker.query('BEGIN');
+    await revoker.query("SET LOCAL lock_timeout = '100ms'");
+    await expect(
+      revoker.query(
+        `UPDATE ${schema}.membership_probe SET active = false WHERE user_id = 'actor' AND household_id = 'A'`,
+      ),
+    ).rejects.toMatchObject({ code: '55P03' });
+    await revoker.query('ROLLBACK');
+
+    await writer.query('COMMIT');
+    await revoker.query(
+      `UPDATE ${schema}.membership_probe SET active = false WHERE user_id = 'actor' AND household_id = 'A'`,
+    );
+
+    await writer.query(
+      `UPDATE ${schema}.membership_probe SET active = true WHERE user_id = 'actor' AND household_id = 'A'`,
+    );
+    await revoker.query('BEGIN');
+    await revoker.query(
+      `UPDATE ${schema}.membership_probe SET active = false WHERE user_id = 'actor' AND household_id = 'A'`,
+    );
+    await writer.query('BEGIN');
+    await writer.query("SET LOCAL lock_timeout = '100ms'");
+    await expect(
+      writer.query(
+        `SELECT active FROM ${schema}.membership_probe WHERE user_id = 'actor' AND household_id = 'A' FOR SHARE`,
+      ),
+    ).rejects.toMatchObject({ code: '55P03' });
+    await writer.query('ROLLBACK');
+    await revoker.query('COMMIT');
+
+    await writer.query('BEGIN');
+    const afterRevocation = await writer.query<{ active: boolean }>(
+      `SELECT active FROM ${schema}.membership_probe WHERE user_id = 'actor' AND household_id = 'A' FOR SHARE`,
+    );
+    expect(afterRevocation.rows[0].active).toBe(false);
+    await writer.query('ROLLBACK');
+
+    const effects = await writer.query<{ count: string }>(
+      `SELECT count(*) FROM ${schema}.membership_effect_probe`,
+    );
+    expect(effects.rows[0].count).toBe('1');
+  } finally {
+    await writer.query('ROLLBACK');
+    await revoker.query('ROLLBACK');
+    writer.release();
+    revoker.release();
   }
 });
 

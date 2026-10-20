@@ -29,6 +29,8 @@ Em PostgreSQL 18.6 local, `pnpm --filter prumo-api test:db` passou com **10 test
 
 O laboratório usa dados descartáveis e roles criadas pelo usuário migrador local. Ele não prova integração com sessão, revogação de membership, worker real, todas as tabelas futuras ou comportamento em produção. Em 2026-10-20, o usuário confirmou o job `checks` verde da [CI do commit `684c53d`](https://github.com/ViniciusOliveiraMonteiro/prumo/actions/runs/39483065072), que inclui o laboratório de banco; informou 26 testes de banco aprovados. Os logs privados não foram inspecionados nesta sessão. Essa CI confirma a execução do laboratório publicado, não os gates de autorização ainda ausentes.
 
+Após essa CI, o laboratório recebeu um [teste de conflito entre bloqueio de membership e revogação](ADR-041-household-authorization-boundary-proposal.md#evidência-técnica-inicial), com 11 testes locais aprovados no arquivo em 2026-10-20. A nova evidência é do mecanismo PostgreSQL, não da autorização integrada; sua CI ainda não foi conferida.
+
 ## Gates antes da decisão final
 
 - Na Sprint 4, revisar a [ADR-041 proposta](ADR-041-household-authorization-boundary-proposal.md#fluxo-proposto-para-validação), definir membership e permissão por ação; testar a passagem do household autorizado pela API até a **mesma transação e conexão** das consultas. Uma sessão válida sem membership ativa, uma revogação e uma falha de autorização devem impedir a operação. Para escrita concorrente à revogação, demonstrar a ordem transacional exigida pela [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo).
