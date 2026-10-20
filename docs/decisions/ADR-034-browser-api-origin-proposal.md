@@ -44,6 +44,10 @@ A origem única simplifica o contrato do browser e evita configurar CORS com cre
 
 Em 2026-10-15, o login pelo rewrite local mostrou que o `Host` recebido pela API pode ser o endereço interno. A API passou a usar `PRUMO_PUBLIC_ORIGIN` como origem externa confiável explícita tanto na proteção CSRF quanto na biblioteca de sessão, sem confiar em `X-Forwarded-Host` enviado pelo cliente. Com essa configuração, a conta descartável fez login, leu `/api/auth/me` e saiu pelo caminho público; o mesmo cookie falhou após a revogação e uma origem estrangeira recebeu `403`. `Set-Cookie` e `Cache-Control: no-store` foram preservados. Isso cobre o desenvolvimento local; ainda faltam HTTPS, proxy de implantação, renderização autenticada da web e teste de cache com dois usuários.
 
+Em 2026-10-20, um teste E2E local acrescentou TLS com certificado temporário, proxy reverso, rewrite Next.js e duas contas descartáveis. O caminho preservou cookie seguro, origem, status e `no-store`; a identidade de cada cookie ficou isolada e o logout de uma conta não afetou a outra. A evidência e o comando estão no [roteiro da Sprint 3](../operations/BOOTSTRAP_SPRINT_3.md#checks-de-saída). Permanece pendente repetir com o proxy de staging, avaliar cache intermediário real e testar página autenticada renderizada no servidor.
+
+No mesmo teste, o proxy local passou a simular um cache compartilhado para `GET /api/auth/me`, usando apenas o caminho como chave e respeitando `no-store`, `no-cache` e `private`. Uma resposta pública sintética foi armazenada e reutilizada como controle positivo; a leitura com dois cookies e a leitura anônima não criaram entrada nem hit de cache. Esse caso detecta regressões de cabeçalho que poderiam reutilizar uma identidade entre contas; o comportamento do cache de staging continua pendente.
+
 ## Fontes técnicas consultadas
 
 - [Next.js: rewrites para URL externa](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) e [self-hosting com proxy reverso](https://nextjs.org/docs/app/guides/self-hosting).
