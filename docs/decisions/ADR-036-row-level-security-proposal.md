@@ -33,7 +33,9 @@ Após essa CI, o laboratório recebeu um [teste de conflito entre bloqueio de me
 
 ## Gates antes da decisão final
 
-- Na Sprint 4, revisar a [ADR-041 proposta](ADR-041-household-authorization-boundary-proposal.md#fluxo-proposto-para-validação), definir membership e permissão por ação; testar a passagem do household autorizado pela API até a **mesma transação e conexão** das consultas. Uma sessão válida sem membership ativa, uma revogação e uma falha de autorização devem impedir a operação. Para escrita concorrente à revogação, demonstrar a ordem transacional exigida pela [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo).
+- Na Sprint 4, validar no PostgreSQL real o [primeiro recorte aprovado da ADR-041](ADR-041-household-authorization-boundary-proposal.md#primeiro-recorte-aprovado), com membership e permissão por ação passando pela API até a **mesma transação e conexão** da escrita. Uma sessão válida sem membership ativa, uma revogação e uma falha de autorização devem impedir a operação. Para escrita concorrente à revogação, demonstrar a ordem transacional exigida pela [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo). A matriz financeira e a decisão final de RLS continuam pendentes.
+
+**Evidência em 2026-10-21:** o primeiro recorte passou com cinco E2E de household no PostgreSQL local com `prumo_app`, incluindo revogação nas duas ordens e rollback da criação. O teste exigiu conceder `UPDATE` em memberships à role da aplicação para usar `FOR SHARE`; o custo está registrado na ADR-041. Ainda falta repetir a defesa em recursos financeiros reais, com vínculos, agregações e esquema correspondente. RLS permanece proposta.
 - Definir as roles de migração, aplicação e jobs sem conceder owner ou `BYPASSRLS` ao caminho comum; testar seus grants e a ausência de contexto no pool reutilizado.
 - Desenhar policies e constraints do primeiro esquema financeiro, incluindo operações com vínculos e consultas agregadas; testar A/B por API e SQL.
 - Especificar e testar jobs por household e exceções administrativas, com auditoria. Reavaliar custo operacional e desempenho no fluxo real.

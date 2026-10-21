@@ -50,6 +50,15 @@ try {
   await pool.query(
     'REVOKE SELECT ON identity.credential_events FROM prumo_app',
   );
+  await pool.query('GRANT USAGE ON SCHEMA household TO prumo_app');
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE ON household.households TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE ON household.memberships TO prumo_app',
+  );
+  await pool.query('GRANT INSERT ON household.events TO prumo_app');
+  await pool.query('REVOKE SELECT ON household.events FROM prumo_app');
   process.stdout.write('Local application role is ready.\n');
 } finally {
   await pool.end();

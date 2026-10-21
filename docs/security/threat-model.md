@@ -1,6 +1,6 @@
 # Threat model inicial do Prumo
 
-**Status:** rascunho iniciado na Sprint 1 (SEC-002), atualizado em 2026-10-15 para o primeiro login privado. Sessão revogável, proteção de origem e role restrita passaram em testes locais; os demais controles continuam candidatos ou pendentes. Revisar ao definir autorização de household, hospedagem, armazenamento, importação e IA. Este documento deriva das seções 15, 22, 31 e 32 do Plano Mestre.
+**Status:** rascunho iniciado na Sprint 1 (SEC-002), atualizado em 2026-10-21 para o primeiro recorte de household. Sessão revogável, proteção de origem e role restrita passaram em testes locais anteriores; o recorte de autorização passou com cinco E2E no PostgreSQL local após revisão independente. Revisar ao definir recursos financeiros, gestão de membros, hospedagem, armazenamento, importação e IA. Este documento deriva das seções 15, 22, 31 e 32 do Plano Mestre.
 
 ## Escopo e ativos
 
@@ -25,7 +25,7 @@ Pessoa / navegador
   → armazenamento de arquivos e processamento de imports (futuros)
 ```
 
-O navegador e arquivos enviados são entradas não confiáveis. A API não pode tratar `householdId` recebido do cliente como prova de autorização. O limite entre households precisa ser verificado para cada recurso, mesmo que os dados compartilhem banco. A ADR-029 define a baseline de autorização e escopo no primeiro fluxo; a escolha de RLS permanece em proposta na ADR-036. As ADRs 033/037 definem sessão e identidade mínimas: a API autentica o usuário, mas não autoriza household. Frontend, backend e banco foram escolhidos, mas não implantados.
+O navegador e arquivos enviados são entradas não confiáveis. A API não pode tratar `householdId` recebido do cliente como prova de autorização. O limite entre households precisa ser verificado para cada recurso, mesmo que os dados compartilhem banco. A ADR-029 define a baseline de autorização e escopo no primeiro fluxo; a escolha de RLS permanece em proposta na ADR-036. As ADRs 033/037 definem sessão e identidade mínimas. O [primeiro recorte da ADR-041](../decisions/ADR-041-household-authorization-boundary-proposal.md#primeiro-recorte-aprovado) valida autorização para leitura e alteração de nome de household no PostgreSQL local. Autorização financeira e implantação continuam pendentes. O `FOR SHARE` exigiu `UPDATE` sobre memberships para `prumo_app`; esse privilégio deve ser reavaliado com RLS e a gestão pública de membros.
 
 ## Ameaças, controles candidatos e evidência exigida
 
@@ -67,6 +67,7 @@ Prioridade é uma triagem inicial por impacto e plausibilidade, não uma medida 
 | TM-32 | Cookie de sessão é aceito em origem hostil ou continua válido após logout/desativação. | Alta | Cookie host-only com flags seguras, origem pública explícita, CSRF no NestJS, store PostgreSQL e leitura atual do usuário. | E2E local direto e pelo rewrite confirmou `403` para origem hostil, `401` após revogação/desativação, `no-store` e flags; repetir em HTTPS/staging e cache com dois usuários. |
 | TM-33 | API usa por engano a role migradora e contorna limites de isolamento do banco. | Alta | Exigir `prumo_app`, grants mínimos e recusa na inicialização com URL de role distinta. | Teste PostgreSQL local confirmou ausência de owner, superuser, `BYPASSRLS` e CREATE no schema; repetir no deploy e nas tabelas financeiras. |
 | TM-34 | Reset de senha sem prova suficiente entrega a conta ao atacante ou deixa sessões antigas ativas. | Alta | ADR-039 aprovou códigos offline pré-MVP para a conta privada: emissão com senha atual, hash, uso único, limite por e-mail, revogação, versão da credencial e auditoria. Reset por migrador segue proposto somente como saída do laboratório; recuperação pública depende de entrega e notificação. | E2E local confirmou uso único, concorrência, origem hostil, rollback e que login com senha antiga pausado antes do commit não deixa sessão utilizável depois. Ainda faltam notificação independente, limite por origem no proxy, revisão dos parâmetros e HTTPS/cache antes de uso externo. |
+| TM-35 | Gestão de membros revoga ou altera o `OWNER` errado, deixa o household sem proprietário, afeta outro household ou perde a trilha da revogação. | Alta | A [ADR-042 aprovada para o recorte mínimo](../decisions/ADR-042-minimal-membership-management-proposal.md#matriz-mínima-aprovada) limita a API a listar e revogar `MEMBER`/`VIEWER` existentes por `OWNER`, sem modificar `OWNER`; revogação e auditoria confirmam na mesma transação. Convite e troca de papéis exigem decisão própria. | Seis E2E de memberships passaram no PostgreSQL local: alvo A/B, owner intocável, auditoria com rollback, repetição sem evento duplicado, próxima leitura negada e concorrência com alteração de nome. O reviewer examinou a implementação sem achados concretos. A corrida com escrita de produto do alvo fica pendente até existir escrita autorizada para `MEMBER`; o laboratório sintético de bloqueios não comprova esse fluxo. |
 
 ## Pendências e gatilhos de revisão
 

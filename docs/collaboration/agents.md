@@ -25,8 +25,11 @@ Fluxos típicos:
 
 - Investigação: principal → explorer → principal.
 - Decisão arquitetural: principal → explorer, se necessário → architect → principal.
-- Implementação: principal → developer → reviewer, quando a revisão independente agregar valor → principal.
+- Implementação de risco relevante: principal ou developer implementa e testa → reviewer faz leitura independente do diff → principal avalia e corrige os achados, repetindo a revisão das correções materiais → principal relata o resultado.
+- Mudança trivial: principal resolve diretamente; a revisão por subagente é opcional quando não trouxer ganho concreto.
 - Mudança arquitetural complexa: principal → explorer → architect → principal avalia a proposta → developer → reviewer → principal.
+
+O `reviewer` é etapa padrão para regras financeiras, autenticação, autorização, isolamento de households, backend, banco/migrações e DevOps. Ele recebe a mudança delimitada, requisitos, evidência dos testes e pedido de achados por gravidade; atua em leitura e não aprova a própria implementação. O principal mantém a responsabilidade pela decisão final e registra defeitos corrigidos, risco residual e testes executados. Se o agente estiver indisponível, o principal faz a revisão possível e declara explicitamente que não houve revisão independente; não apresenta a etapa como cumprida.
 
 `AGENTS.md` contém regras gerais do projeto e de orquestração. Os arquivos `.codex/agents/*.toml`, quando instalados, serão a única fonte de modelos, permissões solicitadas e instruções específicas de cada papel. Os arquivos `agents/*.md` são transitórios: preservá-los até confirmar a descoberta e o funcionamento dos quatro agentes nativos; depois removê-los. Não copiar os prompts TOML para esta documentação.
 

@@ -41,5 +41,6 @@ Faça as atualizações na **mesma mudança** que conclui a etapa ou toma a deci
 - Verifique todos os arquivos e âncoras locais adicionados ou alterados; confira também referências ao caminho antigo quando mover um documento.
 - Execute `git diff --check`. Para comandos operacionais alterados, rode a verificação relevante quando praticável ou registre por que não foi possível. Para mudança apenas de Markdown, não há motivo para repetir toda a suíte de código.
 - Confira no quadro da sprint o **status**, o **critério de aceite** e a **próxima ação**. O documento deve permitir que outra pessoa encontre a evidência sem depender da conversa.
+- Para mudanças de risco relevante, registre no quadro a revisão independente exigida pela [arquitetura de subagentes](../collaboration/agents.md) e seus achados ou ausência deles; testes e revisão são evidências distintas.
 
 Este guia é uma regra de manutenção. A [governança do Plano Mestre](../../PLANO_MESTRE_GESTAO_FINANCEIRA_DOMESTICA.md#44-governança-de-documentação) resume sua posição no projeto; `AGENTS.md` exige sua aplicação durante o trabalho.

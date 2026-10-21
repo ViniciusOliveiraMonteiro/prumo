@@ -26,5 +26,6 @@ import { publicOrigin } from '../http/public-origin.js';
     DrizzleSessionStore,
     IdentitySessionProvider,
   ],
+  exports: [IdentityDatabase],
 })
 export class IdentityModule {}

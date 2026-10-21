@@ -22,6 +22,7 @@
 O agente principal compreende a demanda, decide se delega, seleciona o especialista, avalia criticamente o resultado e integra a resposta final. Delegue apenas quando houver ganho real de investigação, independência ou execução; resolva tarefas triviais diretamente e não crie agentes só porque há vagas.
 
 - Escolha pelo resultado pedido: evidências → `explorer`; análise ou proposta de ADR → `architect`; implementação → `developer`; revisão de mudança concluída → `reviewer`.
+- Após implementar e testar uma mudança de risco relevante — regras financeiras, autenticação, autorização, isolamento de households, backend, banco/migrações ou DevOps — acione `reviewer` como etapa padrão antes de apresentar o trabalho como concluído. Para mudanças triviais, explique quando a revisão independente não agregar valor. O principal avalia os achados, corrige defeitos e repete a revisão das partes alteradas quando a correção for material; testes verdes não substituem essa revisão.
 - Dê a cada subagente uma pergunta ou tarefa objetiva, contexto mínimo, limites e resultado esperado. Evite trabalho duplicado e edições concorrentes nos mesmos arquivos.
 - Subagentes não ampliam o próprio escopo. Pedidos fora do papel voltam ao agente principal, que redistribui o trabalho. Decisões arquiteturais relevantes ficam visíveis para o usuário.
 - Em assuntos relevantes de arquitetura, segurança, backend, banco ou DevOps, explique decisão, motivo, alternativas, trade-offs e conceitos para estudo posterior. Não esconda essas decisões atrás da implementação.
