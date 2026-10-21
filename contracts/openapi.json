@@ -533,6 +533,186 @@
           "households"
         ]
       }
+    },
+    "/api/households/{id}/invitations": {
+      "post": {
+        "operationId": "HouseholdInvitationController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "429": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "households"
+        ]
+      }
+    },
+    "/api/households/{id}/invitations/{requestId}/cancel": {
+      "post": {
+        "operationId": "HouseholdInvitationController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "households"
+        ]
+      }
+    },
+    "/api/auth/invitations": {
+      "get": {
+        "operationId": "AuthInvitationController_inbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvitationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/invitations/{invitationId}/accept": {
+      "post": {
+        "operationId": "AuthInvitationController_accept",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
     }
   },
   "info": {
@@ -723,6 +903,64 @@
         "required": [
           "userId",
           "role"
+        ]
+      },
+      "InvitationBody": {
+        "type": "object",
+        "properties": {
+          "inviteeUserId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "inviteeUserId"
+        ]
+      },
+      "InvitationRequestResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Opaque request identifier; delivery is not confirmed."
+          }
+        },
+        "required": [
+          "requestId"
+        ]
+      },
+      "InvitationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "householdId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "householdName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "VIEWER"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "householdId",
+          "householdName",
+          "role",
+          "expiresAt"
         ]
       }
     }

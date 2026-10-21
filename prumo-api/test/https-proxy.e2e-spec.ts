@@ -61,6 +61,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
   let next: ChildProcess | undefined;
   let nextOutput = '';
   let proxy: ReturnType<typeof createHttpsServer> | undefined;
+  let invitationHouseholdId: string | undefined;
   const sharedCache = new Map<
     string,
     { status: number; headers: IncomingHttpHeaders; body: Buffer }
@@ -169,6 +170,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
         const cacheKey =
           incoming.method === 'GET' &&
           (incoming.url === '/api/auth/me' ||
+            incoming.url === '/api/auth/invitations' ||
             incoming.url?.split('?')[0] === '/conta' ||
             incoming.url === '/__cache_probe')
             ? incoming.url
@@ -396,6 +398,84 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     expect(anonymous.headers['cache-control']).toBe('no-store');
     expect(sharedCache.size).toBe(0);
     expect(cacheHits).toBe(0);
+    const createdHousehold = await call(
+      '/api/households',
+      'POST',
+      { name: 'Proxy invitation test' },
+      firstCookie,
+      process.env.PRUMO_PUBLIC_ORIGIN,
+    );
+    expect(createdHousehold.status).toBe(201);
+    invitationHouseholdId = (
+      JSON.parse(createdHousehold.body) as { id: string }
+    ).id;
+    expect(createdHousehold.headers['cache-control']).toBe('no-store');
+    const invited = await call(
+      `/api/households/${invitationHouseholdId}/invitations`,
+      'POST',
+      { inviteeUserId: people[1].id },
+      firstCookie,
+      process.env.PRUMO_PUBLIC_ORIGIN,
+    );
+    expect(invited.status).toBe(202);
+    expect(invited.headers['cache-control']).toBe('no-store');
+    const invitationId = (JSON.parse(invited.body) as { requestId: string })
+      .requestId;
+    const firstInbox = await call(
+      '/api/auth/invitations',
+      'GET',
+      undefined,
+      firstCookie,
+    );
+    const secondInbox = await call(
+      '/api/auth/invitations',
+      'GET',
+      undefined,
+      secondCookie,
+    );
+    expect(firstInbox.status).toBe(200);
+    expect(JSON.parse(firstInbox.body)).toEqual([]);
+    expect(secondInbox.status).toBe(200);
+    expect(secondInbox.headers['cache-control']).toBe('no-store');
+    expect(JSON.parse(secondInbox.body)).toEqual([
+      expect.objectContaining({
+        id: invitationId,
+        householdId: invitationHouseholdId,
+      }),
+    ]);
+    expect(sharedCache.size).toBe(0);
+    expect(cacheHits).toBe(0);
+    const hostileAccept = await call(
+      `/api/auth/invitations/${invitationId}/accept`,
+      'POST',
+      undefined,
+      secondCookie,
+      'https://foreign.test',
+    );
+    expect(hostileAccept.status).toBe(403);
+    const beforeAccept = await call(
+      `/api/households/${invitationHouseholdId}`,
+      'GET',
+      undefined,
+      secondCookie,
+    );
+    expect(beforeAccept.status).toBe(404);
+    const accepted = await call(
+      `/api/auth/invitations/${invitationId}/accept`,
+      'POST',
+      undefined,
+      secondCookie,
+      process.env.PRUMO_PUBLIC_ORIGIN,
+    );
+    expect(accepted.status).toBe(204);
+    expect(accepted.headers['cache-control']).toBe('no-store');
+    const afterAccept = await call(
+      `/api/households/${invitationHouseholdId}`,
+      'GET',
+      undefined,
+      secondCookie,
+    );
+    expect(afterAccept.status).toBe(200);
     const hostile = await call(
       '/api/auth/sign-out',
       'POST',
@@ -524,6 +604,27 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     }
     writeFileSync(tsconfig, tsconfigBefore);
     if (app) await app.close();
+    if (invitationHouseholdId) {
+      await admin.query(
+        'DELETE FROM household.events WHERE household_id = $1',
+        [invitationHouseholdId],
+      );
+      await admin.query(
+        'DELETE FROM household.invitation_requests WHERE household_id = $1',
+        [invitationHouseholdId],
+      );
+      await admin.query(
+        'DELETE FROM household.invitations WHERE household_id = $1',
+        [invitationHouseholdId],
+      );
+      await admin.query(
+        'DELETE FROM household.memberships WHERE household_id = $1',
+        [invitationHouseholdId],
+      );
+      await admin.query('DELETE FROM household.households WHERE id = $1', [
+        invitationHouseholdId,
+      ]);
+    }
     for (const person of people) {
       if (person.id)
         await admin.query('DELETE FROM identity.users WHERE id = $1', [
