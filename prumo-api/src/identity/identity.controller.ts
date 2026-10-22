@@ -97,6 +97,7 @@ export class IdentityController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   @ApiOkResponse({ type: CurrentUserResponse })
+  @ApiBadRequestResponse()
   @ApiUnauthorizedResponse()
   @ApiForbiddenResponse()
   @ApiTooManyRequestsResponse({
@@ -158,6 +159,7 @@ export class IdentityController {
   @ApiCookieAuth('__Host-sid')
   @ApiNoContentResponse()
   @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
   async signOut(): Promise<void> {
     await this.signInService.signOut();
   }
@@ -168,6 +170,7 @@ export class IdentityController {
   @ApiCookieAuth('__Host-sid')
   @ApiNoContentResponse()
   @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
   async signOutAll(@CurrentUser('id') userId: string): Promise<void> {
     await this.signInService.signOutEverywhere(userId);
   }

@@ -124,11 +124,21 @@ test('issues codes once with reauthentication and replaces the previous set', as
 test('returns the same failure for unknown accounts and limits repeated guesses', async () => {
   const unknown = `unknown-${randomUUID()}@prumo.test`;
   const invalidCode = 'A'.repeat(22);
+  const malformed = await recover(email, 'invalid').expect(400);
+  expect(malformed.headers['cache-control']).toBe('no-store');
+  const foreignOrigin = await request(app.getHttpServer())
+    .post('/api/auth/recover-with-code')
+    .set('Host', 'localhost:3000')
+    .set('Origin', 'https://foreign.test')
+    .send({ email, code: invalidCode, newPassword })
+    .expect(403);
+  expect(foreignOrigin.headers['cache-control']).toBe('no-store');
   await owner.query(
     'DELETE FROM identity.recovery_attempts WHERE subject_hash = $1',
     [createHash('sha256').update(email).digest('hex')],
   );
-  await recover(unknown, invalidCode).expect(401);
+  const unknownResponse = await recover(unknown, invalidCode).expect(401);
+  expect(unknownResponse.headers['cache-control']).toBe('no-store');
   await owner.query(
     'DELETE FROM identity.recovery_attempts WHERE subject_hash = $1',
     [createHash('sha256').update(unknown).digest('hex')],
@@ -137,7 +147,8 @@ test('returns the same failure for unknown accounts and limits repeated guesses'
     await recover(email, invalidCode).expect(401);
   }
   await recover(email, invalidCode).expect(401);
-  await recover(email, invalidCode).expect(429);
+  const blocked = await recover(email, invalidCode).expect(429);
+  expect(blocked.headers['cache-control']).toBe('no-store');
   await owner.query(
     'DELETE FROM identity.recovery_attempts WHERE subject_hash = $1',
     [createHash('sha256').update(email).digest('hex')],

@@ -63,6 +63,14 @@ test('signs in with a host-only cookie and denies the session after sign-out', a
     .expect(200)
     .expect({ id: userId, email });
 
+  const forbiddenSignOut = await request(app.getHttpServer())
+    .post('/api/auth/sign-out')
+    .set('Host', 'localhost:3000')
+    .set('Origin', 'https://foreign.test')
+    .set('Cookie', cookie)
+    .expect(403);
+  expect(forbiddenSignOut.headers['cache-control']).toBe('no-store');
+
   await request(app.getHttpServer())
     .post('/api/auth/sign-out')
     .set('Host', 'localhost:3000')
@@ -78,19 +86,51 @@ test('signs in with a host-only cookie and denies the session after sign-out', a
 });
 
 test('rejects foreign origins and wrong credentials', async () => {
-  await request(app.getHttpServer())
+  const forbidden = await request(app.getHttpServer())
     .post('/api/auth/sign-in')
     .set('Host', 'localhost:3000')
     .set('Origin', 'https://foreign.test')
     .send({ email, password })
     .expect(403);
-  await request(app.getHttpServer())
+  expect(forbidden.headers['cache-control']).toBe('no-store');
+  const invalid = await request(app.getHttpServer())
+    .post('/api/auth/sign-in')
+    .set('Host', 'localhost:3000')
+    .set('Origin', 'http://localhost:3000')
+    .send({ email, password: 123 })
+    .expect(400);
+  expect(invalid.headers['cache-control']).toBe('no-store');
+  const unauthorized = await request(app.getHttpServer())
     .post('/api/auth/sign-in')
     .set('Host', 'localhost:3000')
     .set('Origin', 'http://localhost:3000')
     .send({ email, password: 'wrong-password' })
     .expect(401);
-  await request(app.getHttpServer()).get('/api/auth/me').expect(401);
+  expect(unauthorized.headers['cache-control']).toBe('no-store');
+  const anonymous = await request(app.getHttpServer())
+    .get('/api/auth/me')
+    .expect(401);
+  expect(anonymous.headers['cache-control']).toBe('no-store');
+});
+
+test('rejects an expired cookie even while its row remains in the database', async () => {
+  const signedIn = await request(app.getHttpServer())
+    .post('/api/auth/sign-in')
+    .set('Host', 'localhost:3000')
+    .set('Origin', 'http://localhost:3000')
+    .send({ email, password })
+    .expect(200);
+  const setCookie = signedIn.headers['set-cookie'];
+  const cookie = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+  await admin.query(
+    "UPDATE identity.sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1",
+    [userId],
+  );
+  const expired = await request(app.getHttpServer())
+    .get('/api/auth/me')
+    .set('Cookie', cookie)
+    .expect(401);
+  expect(expired.headers['cache-control']).toBe('no-store');
 });
 
 test('sign-out-all revokes another session of the same user', async () => {

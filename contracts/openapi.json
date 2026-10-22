@@ -48,6 +48,9 @@
               }
             }
           },
+          "400": {
+            "description": ""
+          },
           "401": {
             "description": ""
           },
@@ -102,6 +105,9 @@
           },
           "401": {
             "description": ""
+          },
+          "403": {
+            "description": ""
           }
         },
         "security": [
@@ -123,6 +129,9 @@
             "description": ""
           },
           "401": {
+            "description": ""
+          },
+          "403": {
             "description": ""
           }
         },

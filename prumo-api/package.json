@@ -20,6 +20,7 @@
     "db:migrate": "node dist/database/migrate.js",
     "db:prepare-app": "node dist/database/prepare-app-role.js",
     "db:provision-user": "node dist/identity/provision-user.js",
+    "db:prune-identity": "node dist/identity/prune-expired.cli.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
