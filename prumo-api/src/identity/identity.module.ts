@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthenticationModule } from '@nestjs/authentication';
 import { ChangePasswordService } from './change-password.service.js';
+import { EmailLifecycleService } from './email-lifecycle.service.js';
 import { DrizzleSessionStore } from './drizzle-session.store.js';
 import { IdentityController } from './identity.controller.js';
 import { IdentityDatabase } from './identity.database.js';
@@ -22,6 +23,7 @@ import { publicOrigin } from '../http/public-origin.js';
     IdentityUserRepository,
     SignInAttemptsService,
     ChangePasswordService,
+    EmailLifecycleService,
     RecoveryCodesService,
     DrizzleSessionStore,
     IdentitySessionProvider,

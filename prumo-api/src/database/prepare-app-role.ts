@@ -50,6 +50,23 @@ try {
   await pool.query(
     'REVOKE SELECT ON identity.credential_events FROM prumo_app',
   );
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.email_change_requests, identity.email_challenges TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE ON identity.email_delivery_outbox TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT ON identity.email_issue_attempts TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.email_current_password_attempts TO prumo_app',
+  );
+  await pool.query(
+    'GRANT USAGE, SELECT ON SEQUENCE identity.email_issue_attempts_id_seq TO prumo_app',
+  );
+  await pool.query('GRANT INSERT ON identity.email_events TO prumo_app');
+  await pool.query('REVOKE SELECT ON identity.email_events FROM prumo_app');
   await pool.query('GRANT USAGE ON SCHEMA household TO prumo_app');
   await pool.query(
     'GRANT SELECT, INSERT, UPDATE ON household.households TO prumo_app',

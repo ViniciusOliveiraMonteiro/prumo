@@ -24,6 +24,15 @@ test('application role can use identity tables without owning schema or bypassin
       can_count_recovery_attempts: boolean;
       can_write_credential_event: boolean;
       can_read_credential_events: boolean;
+      can_read_email_change: boolean;
+      can_prune_email_change: boolean;
+      can_write_email_challenge: boolean;
+      can_prune_email_challenge: boolean;
+      can_update_email_outbox: boolean;
+      can_count_email_issues: boolean;
+      can_limit_email_password: boolean;
+      can_write_email_event: boolean;
+      can_read_email_events: boolean;
     }>(`
       SELECT current_user, r.rolsuper, r.rolbypassrls, r.rolcreaterole,
         has_schema_privilege(current_user, 'identity', 'CREATE') AS can_create,
@@ -36,6 +45,15 @@ test('application role can use identity tables without owning schema or bypassin
         has_table_privilege(current_user, 'identity.recovery_attempts', 'INSERT') AS can_count_recovery_attempts,
         has_table_privilege(current_user, 'identity.credential_events', 'INSERT') AS can_write_credential_event,
         has_table_privilege(current_user, 'identity.credential_events', 'SELECT') AS can_read_credential_events
+        ,has_table_privilege(current_user, 'identity.email_change_requests', 'SELECT') AS can_read_email_change
+        ,has_table_privilege(current_user, 'identity.email_change_requests', 'DELETE') AS can_prune_email_change
+        ,has_table_privilege(current_user, 'identity.email_challenges', 'INSERT') AS can_write_email_challenge
+        ,has_table_privilege(current_user, 'identity.email_challenges', 'DELETE') AS can_prune_email_challenge
+        ,has_table_privilege(current_user, 'identity.email_delivery_outbox', 'UPDATE') AS can_update_email_outbox
+        ,has_table_privilege(current_user, 'identity.email_issue_attempts', 'INSERT') AS can_count_email_issues
+        ,has_table_privilege(current_user, 'identity.email_current_password_attempts', 'UPDATE') AS can_limit_email_password
+        ,has_table_privilege(current_user, 'identity.email_events', 'INSERT') AS can_write_email_event
+        ,has_table_privilege(current_user, 'identity.email_events', 'SELECT') AS can_read_email_events
       FROM pg_roles r WHERE r.rolname = current_user
     `);
     expect(result.rows[0]).toEqual({
@@ -53,6 +71,15 @@ test('application role can use identity tables without owning schema or bypassin
       can_count_recovery_attempts: true,
       can_write_credential_event: true,
       can_read_credential_events: false,
+      can_read_email_change: true,
+      can_prune_email_change: true,
+      can_write_email_challenge: true,
+      can_prune_email_challenge: true,
+      can_update_email_outbox: true,
+      can_count_email_issues: true,
+      can_limit_email_password: true,
+      can_write_email_event: true,
+      can_read_email_events: false,
     });
   } finally {
     await pool.end();

@@ -19,16 +19,20 @@ import {
 } from '@nestjs/authentication';
 import {
   ApiBadRequestResponse,
+  ApiAcceptedResponse,
   ApiCookieAuth,
   ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiProperty,
+  ApiServiceUnavailableResponse,
   ApiTags,
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ChangePasswordService } from './change-password.service.js';
+import { EmailLifecycleService } from './email-lifecycle.service.js';
 import { IdentityUserRepository } from './identity-user.repository.js';
 import { SignInAttemptsService } from './sign-in-attempts.service.js';
 import { normalizeEmail } from './normalize-email.js';
@@ -80,6 +84,49 @@ class CurrentUserResponse {
   email!: string;
 }
 
+class EmailPendingChangeResponse {
+  @ApiProperty()
+  newEmail!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  expiresAt!: Date;
+
+  @ApiProperty()
+  requiresOldCode!: boolean;
+}
+
+class EmailStatusResponse {
+  @ApiProperty()
+  email!: string;
+
+  @ApiProperty()
+  verified!: boolean;
+
+  @ApiProperty({ type: EmailPendingChangeResponse, nullable: true })
+  pendingChange!: EmailPendingChangeResponse | null;
+}
+
+class EmailCodeBody {
+  @ApiProperty({ minLength: 22, maxLength: 22 })
+  code!: string;
+}
+
+class EmailChangeBody {
+  @ApiProperty({ example: 'new@example.com' })
+  newEmail!: string;
+
+  @ApiProperty({ format: 'password' })
+  currentPassword!: string;
+}
+
+class ConfirmEmailChangeBody {
+  @ApiProperty({ minLength: 22, maxLength: 22 })
+  newCode!: string;
+
+  @ApiProperty({ minLength: 22, maxLength: 22, required: false })
+  oldCode?: string;
+}
+
 @Controller('auth')
 @ApiTags('identity')
 export class IdentityController {
@@ -90,7 +137,134 @@ export class IdentityController {
     private readonly attempts: SignInAttemptsService,
     private readonly passwordChanges: ChangePasswordService,
     private readonly recoveryCodes: RecoveryCodesService,
+    private readonly emailLifecycle: EmailLifecycleService,
   ) {}
+
+  @Get('email-status')
+  @Header('Cache-Control', 'no-store')
+  @ApiCookieAuth('__Host-sid')
+  @ApiOkResponse({ type: EmailStatusResponse })
+  @ApiUnauthorizedResponse()
+  @ApiServiceUnavailableResponse()
+  emailStatus(@CurrentUser('id') userId: string): Promise<EmailStatusResponse> {
+    return this.emailLifecycle.status(userId);
+  }
+
+  @Post('email-verification')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(202)
+  @ApiCookieAuth('__Host-sid')
+  @ApiAcceptedResponse()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiTooManyRequestsResponse()
+  @ApiServiceUnavailableResponse()
+  async requestEmailVerification(
+    @CurrentUser('id') userId: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const retryAfter = await this.emailLifecycle.requestVerification(userId);
+    if (retryAfter !== null) {
+      response.setHeader('Retry-After', String(retryAfter));
+      throw new HttpException(
+        'Too many requests',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  @Post('email-verification/confirm')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(204)
+  @ApiCookieAuth('__Host-sid')
+  @ApiNoContentResponse()
+  @ApiBadRequestResponse()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiUnprocessableEntityResponse()
+  @ApiServiceUnavailableResponse()
+  confirmEmailVerification(
+    @CurrentUser('id') userId: string,
+    @Body() body: EmailCodeBody,
+  ): Promise<void> {
+    if (!body || typeof body.code !== 'string')
+      throw new BadRequestException('Invalid request');
+    return this.emailLifecycle.confirmVerification(userId, body.code);
+  }
+
+  @Post('email-changes')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(202)
+  @ApiCookieAuth('__Host-sid')
+  @ApiAcceptedResponse()
+  @ApiBadRequestResponse()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiTooManyRequestsResponse()
+  @ApiUnprocessableEntityResponse()
+  @ApiServiceUnavailableResponse()
+  async requestEmailChange(
+    @CurrentUser('id') userId: string,
+    @Body() body: EmailChangeBody,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const newEmail = normalizeEmail(body?.newEmail);
+    if (
+      !newEmail ||
+      typeof body?.currentPassword !== 'string' ||
+      !body.currentPassword ||
+      body.currentPassword.length > 4096
+    )
+      throw new BadRequestException('Invalid request');
+    const retryAfter = await this.emailLifecycle.requestChange(
+      userId,
+      newEmail,
+      body.currentPassword,
+    );
+    if (retryAfter !== null) {
+      response.setHeader('Retry-After', String(retryAfter));
+      throw new HttpException(
+        'Too many requests',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  @Post('email-changes/confirm')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(204)
+  @ApiCookieAuth('__Host-sid')
+  @ApiNoContentResponse()
+  @ApiBadRequestResponse()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiUnprocessableEntityResponse()
+  @ApiServiceUnavailableResponse()
+  async confirmEmailChange(
+    @CurrentUser('id') userId: string,
+    @Body() body: ConfirmEmailChangeBody,
+  ): Promise<void> {
+    if (
+      !body ||
+      typeof body.newCode !== 'string' ||
+      (body.oldCode !== undefined && typeof body.oldCode !== 'string')
+    )
+      throw new BadRequestException('Invalid request');
+    await this.emailLifecycle.confirmChange(userId, body.newCode, body.oldCode);
+    await this.signInService.signOut();
+  }
+
+  @Post('email-changes/cancel')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(204)
+  @ApiCookieAuth('__Host-sid')
+  @ApiNoContentResponse()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiServiceUnavailableResponse()
+  cancelEmailChange(@CurrentUser('id') userId: string): Promise<void> {
+    return this.emailLifecycle.cancelChange(userId);
+  }
 
   @Public()
   @Post('sign-in')

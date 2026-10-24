@@ -23,6 +23,232 @@
         ]
       }
     },
+    "/api/auth/email-status": {
+      "get": {
+        "operationId": "IdentityController_emailStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/email-verification": {
+      "post": {
+        "operationId": "IdentityController_requestEmailVerification",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "429": {
+            "description": ""
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/email-verification/confirm": {
+      "post": {
+        "operationId": "IdentityController_confirmEmailVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailCodeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/email-changes": {
+      "post": {
+        "operationId": "IdentityController_requestEmailChange",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          },
+          "429": {
+            "description": ""
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/email-changes/confirm": {
+      "post": {
+        "operationId": "IdentityController_confirmEmailChange",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmEmailChangeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/auth/email-changes/cancel": {
+      "post": {
+        "operationId": "IdentityController_cancelEmailChange",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/auth/sign-in": {
       "post": {
         "operationId": "IdentityController_signIn",
@@ -753,6 +979,99 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "EmailPendingChangeResponse": {
+        "type": "object",
+        "properties": {
+          "newEmail": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "requiresOldCode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "newEmail",
+          "expiresAt",
+          "requiresOldCode"
+        ]
+      },
+      "EmailStatusResponse": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "pendingChange": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EmailPendingChangeResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "verified",
+          "pendingChange"
+        ]
+      },
+      "EmailCodeBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 22,
+            "maxLength": 22
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "EmailChangeBody": {
+        "type": "object",
+        "properties": {
+          "newEmail": {
+            "type": "string",
+            "example": "new@example.com"
+          },
+          "currentPassword": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "newEmail",
+          "currentPassword"
+        ]
+      },
+      "ConfirmEmailChangeBody": {
+        "type": "object",
+        "properties": {
+          "newCode": {
+            "type": "string",
+            "minLength": 22,
+            "maxLength": 22
+          },
+          "oldCode": {
+            "type": "string",
+            "minLength": 22,
+            "maxLength": 22
+          }
+        },
+        "required": [
+          "newCode"
         ]
       },
       "SignInBody": {

@@ -19,7 +19,7 @@ try {
   await database.onModuleInit();
   const result = await pruneExpiredIdentityData(database);
   process.stdout.write(
-    `Removed ${result.sessions} expired sessions, ${result.signInAttempts} old sign-in counters and ${result.recoveryAttempts} old recovery counters.\n`,
+    `Removed ${result.sessions} expired sessions, ${result.signInAttempts} old sign-in counters, ${result.recoveryAttempts} old recovery counters, ${result.emailOutbox} expired email payloads, ${result.emailChallenges} expired email challenges and ${result.emailChanges} expired email changes.\n`,
   );
 } finally {
   await database.onModuleDestroy();

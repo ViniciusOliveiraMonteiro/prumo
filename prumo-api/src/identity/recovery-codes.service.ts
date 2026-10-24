@@ -98,6 +98,14 @@ export class RecoveryCodesService {
         .where(eq(users.id, userId));
       await tx.delete(sessions).where(eq(sessions.userId, userId));
       await tx.delete(recoveryCodes).where(eq(recoveryCodes.userId, userId));
+      await tx.execute(sql`
+        UPDATE identity.email_change_requests SET status = 'cancelled'
+        WHERE user_id = ${userId} AND status = 'pending'
+      `);
+      await tx.execute(sql`
+        UPDATE identity.email_challenges SET status = 'cancelled'
+        WHERE user_id = ${userId} AND status = 'pending'
+      `);
       await tx.insert(recoveryCodes).values(
         replacementCodes.map((replacement) => ({
           userId,

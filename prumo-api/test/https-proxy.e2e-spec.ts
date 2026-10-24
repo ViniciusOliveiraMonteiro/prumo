@@ -170,6 +170,7 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
         const cacheKey =
           incoming.method === 'GET' &&
           (incoming.url === '/api/auth/me' ||
+            incoming.url === '/api/auth/email-status' ||
             incoming.url === '/api/auth/invitations' ||
             incoming.url?.split('?')[0] === '/conta' ||
             incoming.url === '/__cache_probe')
@@ -396,6 +397,35 @@ test('preserves private sessions and no-store through HTTPS and the Next rewrite
     const anonymous = await call('/api/auth/me');
     expect(anonymous.status).toBe(401);
     expect(anonymous.headers['cache-control']).toBe('no-store');
+    expect(sharedCache.size).toBe(0);
+    expect(cacheHits).toBe(0);
+    for (const cookie of [firstCookie, secondCookie]) {
+      const emailStatus = await call(
+        '/api/auth/email-status',
+        'GET',
+        undefined,
+        cookie,
+      );
+      expect(emailStatus.status).toBe(503);
+      expect(emailStatus.headers['cache-control']).toBe('no-store');
+    }
+    const hostileEmailRequest = await call(
+      '/api/auth/email-verification',
+      'POST',
+      {},
+      firstCookie,
+      'https://foreign.test',
+    );
+    expect(hostileEmailRequest.status).toBe(403);
+    const disabledEmailRequest = await call(
+      '/api/auth/email-verification',
+      'POST',
+      {},
+      firstCookie,
+      process.env.PRUMO_PUBLIC_ORIGIN,
+    );
+    expect(disabledEmailRequest.status).toBe(503);
+    expect(disabledEmailRequest.headers['cache-control']).toBe('no-store');
     expect(sharedCache.size).toBe(0);
     expect(cacheHits).toBe(0);
     const createdHousehold = await call(

@@ -23,6 +23,8 @@ export const users = identity.table(
     emailNormalized: text('email_normalized').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
     credentialVersion: integer('credential_version').notNull().default(0),
+    emailVersion: integer('email_version').notNull().default(1),
+    verifiedEmailVersion: integer('verified_email_version'),
     active: boolean('active').notNull().default(true),
     createdAt: at('created_at').notNull().defaultNow(),
     updatedAt: at('updated_at').notNull().defaultNow(),

@@ -20,6 +20,12 @@ const oldRecovery = hash(`old-recovery-${email}`);
 const currentRecovery = hash(`current-recovery-${email}`);
 let userId: string;
 let database: IdentityDatabase;
+let expiredOutboxId: string;
+let activeOutboxId: string;
+let expiredChangeId: string;
+let activeChangeId: string;
+let expiredChallengeId: string;
+let activeChallengeId: string;
 
 beforeAll(async () => {
   const row = await owner.query<{ id: string }>(
@@ -43,6 +49,44 @@ beforeAll(async () => {
       [stale, current],
     );
   }
+  const outbox = await owner.query<{ id: string }>(
+    `INSERT INTO identity.email_delivery_outbox
+       (user_id, payload_ciphertext, payload_iv, payload_tag, key_id,
+        status, expires_at)
+     VALUES
+       ($1, decode('abcd','hex'), decode('abcd','hex'), decode('abcd','hex'),
+        'prune-test', 'pending', now() - interval '1 minute'),
+       ($1, decode('abcd','hex'), decode('abcd','hex'), decode('abcd','hex'),
+        'prune-test', 'pending', now() + interval '1 day')
+     RETURNING id`,
+    [userId],
+  );
+  [expiredOutboxId, activeOutboxId] = outbox.rows.map((row) => row.id);
+  const changes = await owner.query<{ id: string }>(
+    `INSERT INTO identity.email_change_requests
+       (user_id, old_email_normalized, new_email_normalized,
+        from_email_version, from_credential_version, requires_old_proof,
+        status, expires_at)
+     VALUES
+       ($1, $2, $3, 1, 1, false, 'cancelled', now() - interval '1 minute'),
+       ($1, $2, $4, 1, 1, false, 'pending', now() + interval '1 day')
+     RETURNING id`,
+    [userId, email, `expired-${email}`, `active-${email}`],
+  );
+  [expiredChangeId, activeChangeId] = changes.rows.map((row) => row.id);
+  const challenges = await owner.query<{ id: string }>(
+    `INSERT INTO identity.email_challenges
+       (user_id, purpose, email_normalized, email_version,
+        credential_version, code_hash, status, expires_at)
+     VALUES
+       ($1, 'verify_current', $2, 1, 1, $3, 'cancelled', now() - interval '1 minute'),
+       ($1, 'verify_current', $2, 1, 1, $3, 'pending', now() + interval '1 day')
+     RETURNING id`,
+    [userId, email, hash('prune-code')],
+  );
+  [expiredChallengeId, activeChallengeId] = challenges.rows.map(
+    (row) => row.id,
+  );
   database = new IdentityDatabase();
   await database.onModuleInit();
 });
@@ -67,6 +111,9 @@ test('prunes expired identity rows with the application role and keeps live rows
   expect(removed.sessions).toBeGreaterThanOrEqual(1);
   expect(removed.signInAttempts).toBeGreaterThanOrEqual(1);
   expect(removed.recoveryAttempts).toBeGreaterThanOrEqual(1);
+  expect(removed.emailOutbox).toBeGreaterThanOrEqual(1);
+  expect(removed.emailChallenges).toBeGreaterThanOrEqual(1);
+  expect(removed.emailChanges).toBeGreaterThanOrEqual(1);
   const sessions = await owner.query<{ id: string }>(
     'SELECT id FROM identity.sessions WHERE user_id = $1',
     [userId],
@@ -84,9 +131,40 @@ test('prunes expired identity rows with the application role and keeps live rows
       current,
     ]);
   }
+  const outbox = await owner.query<{
+    id: string;
+    status: string;
+    payload_ciphertext: Buffer | null;
+  }>(
+    'SELECT id, status, payload_ciphertext FROM identity.email_delivery_outbox WHERE id = ANY($1::uuid[])',
+    [[expiredOutboxId, activeOutboxId]],
+  );
+  expect(outbox.rows.find((row) => row.id === expiredOutboxId)).toMatchObject({
+    status: 'discarded',
+    payload_ciphertext: null,
+  });
+  expect(outbox.rows.find((row) => row.id === activeOutboxId)).toMatchObject({
+    status: 'pending',
+  });
+  expect(
+    outbox.rows.find((row) => row.id === activeOutboxId)?.payload_ciphertext,
+  ).not.toBeNull();
+  const changes = await owner.query<{ id: string }>(
+    'SELECT id FROM identity.email_change_requests WHERE id = ANY($1::uuid[])',
+    [[expiredChangeId, activeChangeId]],
+  );
+  expect(changes.rows.map((row) => row.id)).toEqual([activeChangeId]);
+  const challenges = await owner.query<{ id: string }>(
+    'SELECT id FROM identity.email_challenges WHERE id = ANY($1::uuid[])',
+    [[expiredChallengeId, activeChallengeId]],
+  );
+  expect(challenges.rows.map((row) => row.id)).toEqual([activeChallengeId]);
   expect(await pruneExpiredIdentityData(database)).toEqual({
     sessions: 0,
     signInAttempts: 0,
     recoveryAttempts: 0,
+    emailOutbox: 0,
+    emailChallenges: 0,
+    emailChanges: 0,
   });
 });

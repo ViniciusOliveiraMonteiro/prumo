@@ -1,6 +1,6 @@
 # ADR-043: convite e aceite de membro para acesso privado
 
-- **Status:** aceita para o recorte privado local em 2026-10-21; implementação validada no PostgreSQL local e revisada independentemente. Aceite por e-mail exigido para a versão final, ainda não especificado nem implementado
+- **Status:** aceita para o recorte privado local em 2026-10-21; implementação validada no PostgreSQL local e revisada independentemente. A direção do aceite por e-mail para contas existentes foi aprovada na ADR-044 em 2026-10-22; a política de verificação foi aprovada na ADR-045 em 2026-10-23; verificação, entrega e recuperação excepcional ainda não foram implementadas
 - **Data:** 2026-10-21
 - **Aprovação:** o usuário aprovou o recorte privado por UUID e determinou que, na versão final, o aceite seja por e-mail
 - **Relacionadas:** [ADR-037](ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos), [ADR-041](ADR-041-household-authorization-boundary-proposal.md#primeiro-recorte-aprovado) e [ADR-042](ADR-042-minimal-membership-management-proposal.md#convite-e-papéis-fora-do-recorte)
@@ -19,7 +19,7 @@ Hoje `/api/auth/me` devolve o UUID da conta autenticada; a identidade privada é
 |---|---|---|
 | Adicionar por e-mail ou UUID sem aceite | Menos etapas | Cria associação sem consentimento; e-mail pode enumerar contas. |
 | Link com token de uso único entregue fora da aplicação | Funciona sem caixa de entrada | Exige canal seguro de entrega; encaminhamento e vazamento do link criam risco de aceite pela conta errada. Mesmo vinculando o token ao usuário, seria necessário confirmar a identidade autenticada. |
-| E-mail com link ou código | Familiar para usuários externos | Precisa de posse de e-mail verificada, serviço de entrega, política de envio, abuso e recuperação ainda não decididos. |
+| E-mail com link ou código | Familiar para usuários externos | Precisa de verificação e entrega implementadas; política de envio, abuso e eventual recuperação excepcional ainda exigem decisão. |
 | **UUID compartilhado e caixa de entrada autenticada** | Usa identidade e sessão já existentes; nenhum segredo circula por link | Compartilhar UUID fora do produto gera atrito; exige descoberta e notificação manual entre pessoas e não demonstra posse do e-mail. |
 
 **Decisão para o recorte privado:** quarta alternativa. O destinatário consulta seu UUID em `/api/auth/me` e o fornece voluntariamente ao `OWNER` por canal escolhido entre eles. UUID é identificador, não credencial; conhecer o UUID não autoriza nenhuma operação. O convite é entregue por `GET` autenticado, sem push ou e-mail. A pessoa precisa entrar no Prumo para vê-lo; a interface deve deixar claro esse limite. A versão final terá aceite por e-mail; seu desenho técnico exige decisão complementar e revisão do threat model.
@@ -62,7 +62,7 @@ O estado `accepted` e a membership resultante permitem repetir a requisição co
 
 ## Requisito para a versão final: aceite por e-mail
 
-O usuário determinou em 2026-10-21 que a aprovação do convite na versão final seja por e-mail. Antes de substituir o aceite privado na caixa de entrada, decidir e testar posse verificada do endereço da conta destinatária, entrega, token ou código de uso único vinculado à conta e ao convite, prazo, encaminhamento do link, abuso e enumeração, notificação, recuperação de acesso ao e-mail e concorrência com cancelamento/revogação. O clique ou código recebido por e-mail deve comprovar controle do canal; a autorização do household ainda depende da identidade da conta e do aceite transacional. Essa exigência de produto está aprovada; o protocolo, provedor, custos e migração do fluxo permanecem **pendentes de decisão**. E-mail de login normalizado, sem verificação, não satisfaz o requisito.
+O usuário determinou em 2026-10-21 que a aprovação do convite na versão final seja por e-mail. Em 2026-10-22, aprovou a [direção da ADR-044](ADR-044-email-invitation-acceptance-proposal.md#direção-aprovada): para contas existentes, código enviado ao endereço verificado, sessão da conta destinatária e aceite explícito. A [política de verificação e troca da ADR-045](ADR-045-verified-email-lifecycle-proposal.md#problema-e-decisões-delimitadas) foi aprovada em 2026-10-23, mas verificação e entrega continuam sem implementação; protocolo detalhado, exceção para perda do canal, parâmetros, provedor, custos e migração do fluxo permanecem **pendentes**. E-mail de login normalizado, sem verificação, não satisfaz o requisito.
 
 ## Pendências e trade-offs
 

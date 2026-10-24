@@ -50,6 +50,14 @@ export class ChangePasswordService {
       await tx.delete(sessions).where(eq(sessions.userId, userId));
       await tx.delete(recoveryCodes).where(eq(recoveryCodes.userId, userId));
       await tx.execute(sql`
+        UPDATE identity.email_change_requests SET status = 'cancelled'
+        WHERE user_id = ${userId} AND status = 'pending'
+      `);
+      await tx.execute(sql`
+        UPDATE identity.email_challenges SET status = 'cancelled'
+        WHERE user_id = ${userId} AND status = 'pending'
+      `);
+      await tx.execute(sql`
         DELETE FROM identity.sign_in_attempts
         WHERE subject_hash = ${hashSignInSubject(credentials.emailNormalized)}
       `);
