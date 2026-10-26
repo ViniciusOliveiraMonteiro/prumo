@@ -54,10 +54,10 @@ try {
     'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.email_change_requests, identity.email_challenges TO prumo_app',
   );
   await pool.query(
-    'GRANT SELECT, INSERT, UPDATE ON identity.email_delivery_outbox TO prumo_app',
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.email_delivery_outbox TO prumo_app',
   );
   await pool.query(
-    'GRANT SELECT, INSERT ON identity.email_issue_attempts TO prumo_app',
+    'GRANT SELECT, INSERT, DELETE ON identity.email_issue_attempts TO prumo_app',
   );
   await pool.query(
     'GRANT SELECT, INSERT, UPDATE, DELETE ON identity.email_current_password_attempts TO prumo_app',

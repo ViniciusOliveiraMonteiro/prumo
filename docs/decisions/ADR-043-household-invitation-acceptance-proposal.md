@@ -1,6 +1,6 @@
 # ADR-043: convite e aceite de membro para acesso privado
 
-- **Status:** aceita para o recorte privado local em 2026-10-21; implementação validada no PostgreSQL local e revisada independentemente. A direção do aceite por e-mail para contas existentes foi aprovada na ADR-044 em 2026-10-22; a política de verificação foi aprovada na ADR-045 em 2026-10-23; verificação, entrega e recuperação excepcional ainda não foram implementadas
+- **Status:** aceita para o recorte privado local em 2026-10-21; implementação validada no PostgreSQL local e revisada independentemente. A direção do aceite por e-mail para contas existentes foi aprovada na ADR-044 em 2026-10-22; a política da ADR-045 foi implementada apenas com captura local em testes em 2026-10-23. Entrega externa, aceite por código de convite e recuperação excepcional ainda não foram implementados
 - **Data:** 2026-10-21
 - **Aprovação:** o usuário aprovou o recorte privado por UUID e determinou que, na versão final, o aceite seja por e-mail
 - **Relacionadas:** [ADR-037](ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos), [ADR-041](ADR-041-household-authorization-boundary-proposal.md#primeiro-recorte-aprovado) e [ADR-042](ADR-042-minimal-membership-management-proposal.md#convite-e-papéis-fora-do-recorte)

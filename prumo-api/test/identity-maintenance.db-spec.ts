@@ -22,6 +22,11 @@ let userId: string;
 let database: IdentityDatabase;
 let expiredOutboxId: string;
 let activeOutboxId: string;
+let oldOutboxHistoryId: string;
+let recentOutboxHistoryId: string;
+let oldEmailIssueId: string;
+let recentEmailIssueId: string;
+let currentEmailIssueId: string;
 let expiredChangeId: string;
 let activeChangeId: string;
 let expiredChallengeId: string;
@@ -62,6 +67,31 @@ beforeAll(async () => {
     [userId],
   );
   [expiredOutboxId, activeOutboxId] = outbox.rows.map((row) => row.id);
+  const history = await owner.query<{ id: string }>(
+    `INSERT INTO identity.email_delivery_outbox
+       (user_id, key_id, status, created_at, expires_at)
+     VALUES
+       ($1, 'prune-test', 'captured', now() - interval '8 days', now() - interval '8 days'),
+       ($1, 'prune-test', 'captured', now() - interval '6 days', now() - interval '6 days')
+     RETURNING id`,
+    [userId],
+  );
+  [oldOutboxHistoryId, recentOutboxHistoryId] = history.rows.map(
+    (row) => row.id,
+  );
+  const issues = await owner.query<{ id: string }>(
+    `INSERT INTO identity.email_issue_attempts
+       (user_id, purpose, admitted, created_at)
+     VALUES
+       ($1, 'verify_current', true, now() - interval '49 hours'),
+       ($1, 'verify_current', false, now() - interval '47 hours'),
+       ($1, 'verify_current', true, now() - interval '23 hours')
+     RETURNING id::text`,
+    [userId],
+  );
+  [oldEmailIssueId, recentEmailIssueId, currentEmailIssueId] = issues.rows.map(
+    (row) => row.id,
+  );
   const changes = await owner.query<{ id: string }>(
     `INSERT INTO identity.email_change_requests
        (user_id, old_email_normalized, new_email_normalized,
@@ -112,6 +142,8 @@ test('prunes expired identity rows with the application role and keeps live rows
   expect(removed.signInAttempts).toBeGreaterThanOrEqual(1);
   expect(removed.recoveryAttempts).toBeGreaterThanOrEqual(1);
   expect(removed.emailOutbox).toBeGreaterThanOrEqual(1);
+  expect(removed.emailOutboxHistory).toBeGreaterThanOrEqual(1);
+  expect(removed.emailIssueAttempts).toBeGreaterThanOrEqual(1);
   expect(removed.emailChallenges).toBeGreaterThanOrEqual(1);
   expect(removed.emailChanges).toBeGreaterThanOrEqual(1);
   const sessions = await owner.query<{ id: string }>(
@@ -137,8 +169,22 @@ test('prunes expired identity rows with the application role and keeps live rows
     payload_ciphertext: Buffer | null;
   }>(
     'SELECT id, status, payload_ciphertext FROM identity.email_delivery_outbox WHERE id = ANY($1::uuid[])',
-    [[expiredOutboxId, activeOutboxId]],
+    [
+      [
+        expiredOutboxId,
+        activeOutboxId,
+        oldOutboxHistoryId,
+        recentOutboxHistoryId,
+      ],
+    ],
   );
+  expect(outbox.rows.some((row) => row.id === oldOutboxHistoryId)).toBe(false);
+  expect(
+    outbox.rows.find((row) => row.id === recentOutboxHistoryId),
+  ).toMatchObject({
+    status: 'captured',
+    payload_ciphertext: null,
+  });
   expect(outbox.rows.find((row) => row.id === expiredOutboxId)).toMatchObject({
     status: 'discarded',
     payload_ciphertext: null,
@@ -149,6 +195,18 @@ test('prunes expired identity rows with the application role and keeps live rows
   expect(
     outbox.rows.find((row) => row.id === activeOutboxId)?.payload_ciphertext,
   ).not.toBeNull();
+  const emailIssues = await owner.query<{ id: string; admitted: boolean }>(
+    `SELECT id::text, admitted FROM identity.email_issue_attempts
+     WHERE user_id = $1 ORDER BY created_at`,
+    [userId],
+  );
+  expect(emailIssues.rows).toEqual([
+    { id: recentEmailIssueId, admitted: false },
+    { id: currentEmailIssueId, admitted: true },
+  ]);
+  expect(emailIssues.rows.some((row) => row.id === oldEmailIssueId)).toBe(
+    false,
+  );
   const changes = await owner.query<{ id: string }>(
     'SELECT id FROM identity.email_change_requests WHERE id = ANY($1::uuid[])',
     [[expiredChangeId, activeChangeId]],
@@ -164,6 +222,8 @@ test('prunes expired identity rows with the application role and keeps live rows
     signInAttempts: 0,
     recoveryAttempts: 0,
     emailOutbox: 0,
+    emailOutboxHistory: 0,
+    emailIssueAttempts: 0,
     emailChallenges: 0,
     emailChanges: 0,
   });

@@ -76,7 +76,7 @@ Requisitos: Linux/WSL 2, Node.js `24.21.0` ou versão compatível com `>=24.21.0
 
 Se o teste de banco retornar `ECONNREFUSED` em `127.0.0.1:54329`, confira `docker compose ps` e inicie `postgres` com o comando acima. O laboratório `test:db` usa o banco local e cria e remove schema e roles próprios; não o aponte para outro banco.
 
-Para remover sessões vencidas e contadores de autenticação com mais de 24 horas no acesso privado, execute `pnpm --filter prumo-api db:prune-identity` na raiz depois de `build` e `db:prepare-app`. O comando exige `prumo_app` no banco local `prumo_dev`, informa apenas contagens e não é agendado automaticamente. Os critérios estão na [ADR-037](../decisions/ADR-037-private-identity-bootstrap-proposal.md#pendências-e-conceitos-para-estudo).
+Para remover sessões vencidas e contadores de autenticação com mais de 24 horas no acesso privado, execute `pnpm --filter prumo-api db:prune-identity` na raiz depois de `build` e `db:prepare-app`. O comando exige `prumo_app` no banco local `prumo_dev`, informa apenas contagens, descarta payload de e-mail vencido e exclui metadados da outbox com mais de sete dias e tentativas de emissão de e-mail com mais de 48 horas. A execução diária antes do piloto externo ainda depende da hospedagem. Os critérios estão na [ADR-037](../decisions/ADR-037-private-identity-bootstrap-proposal.md#pendências-e-conceitos-para-estudo).
 
 ## Verificações e contrato
 

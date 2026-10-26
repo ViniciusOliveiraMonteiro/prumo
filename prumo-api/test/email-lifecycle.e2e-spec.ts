@@ -18,6 +18,7 @@ const secondEmail = `email-${randomUUID()}@prumo.test`;
 let currentEmail = email;
 let app: INestApplication<App>;
 let lifecycle: EmailLifecycleService;
+let hasher: PasswordHasher;
 let userId: string;
 let secondUserId: string;
 const extraUserIds: string[] = [];
@@ -57,6 +58,7 @@ beforeAll(async () => {
   configureHttp(app);
   await app.init();
   lifecycle = app.get(EmailLifecycleService);
+  hasher = app.get(PasswordHasher);
 });
 
 afterAll(async () => {
@@ -252,6 +254,69 @@ test('changes an address that was never verified using only its new code', async
   await signIn(nextEmail);
 });
 
+test('a sign-in racing with email change cannot leave a usable old-address session', async () => {
+  const address = `login-race-${randomUUID()}@prumo.test`;
+  const hash = await new PasswordHasher({ logN: 10 }).hash(password);
+  const created = await admin.query<{ id: string }>(
+    'INSERT INTO identity.users(email, email_normalized, password_hash) VALUES ($1,$1,$2) RETURNING id',
+    [address, hash],
+  );
+  extraUserIds.push(created.rows[0].id);
+  const cookie = await signIn(address);
+  const nextEmail = `login-race-target-${randomUUID()}@prumo.test`;
+  await mutation('/api/auth/email-changes', cookie)
+    .send({ newEmail: nextEmail, currentPassword: password })
+    .expect(202);
+  const [proof] = lifecycle.takeCaptured();
+  expect(proof).toMatchObject({ purpose: 'change_new', to: nextEmail });
+
+  let enteredVerify!: () => void;
+  let resumeVerify!: () => void;
+  const verifying = new Promise<void>((resolve) => {
+    enteredVerify = resolve;
+  });
+  const resume = new Promise<void>((resolve) => {
+    resumeVerify = resolve;
+  });
+  const originalVerify = hasher.verify.bind(hasher);
+  const verify = vi
+    .spyOn(hasher, 'verify')
+    .mockImplementation(async (...args) => {
+      enteredVerify();
+      await resume;
+      return originalVerify(...args);
+    });
+  let oldSignIn: Awaited<ReturnType<typeof signIn>>;
+  try {
+    const pendingSignIn = request(app.getHttpServer())
+      .post('/api/auth/sign-in')
+      .set('Host', 'localhost:3000')
+      .set('Origin', 'http://localhost:3000')
+      .send({ email: address, password })
+      .then((response) => response);
+    await verifying;
+    await mutation('/api/auth/email-changes/confirm', cookie)
+      .send({ newCode: proof.code })
+      .expect(204);
+    resumeVerify();
+    const response = await pendingSignIn;
+    expect(response.status).toBe(200);
+    oldSignIn = cookieOf(response);
+  } finally {
+    resumeVerify();
+    verify.mockRestore();
+  }
+  await request(app.getHttpServer())
+    .get('/api/auth/me')
+    .set('Cookie', oldSignIn)
+    .expect(401);
+  await request(app.getHttpServer())
+    .get('/api/auth/me')
+    .set('Cookie', cookie)
+    .expect(401);
+  await signIn(nextEmail);
+});
+
 test('resend replaces the old proof and replay cannot change the address twice', async () => {
   const address = `resend-${randomUUID()}@prumo.test`;
   const hash = await new PasswordHasher({ logN: 10 }).hash(password);
@@ -423,6 +488,199 @@ test('keeps an occupied destination opaque and does not send to its owner', asyn
   );
   expect(unchanged.rows[0].email_normalized).toBe(address);
 });
+
+test('occupied and free destinations have no gross local timing or log difference', async () => {
+  const durations = { occupied: [] as number[], free: [] as number[] };
+  const statusDurations = { occupied: [] as number[], free: [] as number[] };
+  const hash = await new PasswordHasher({ logN: 10 }).hash(password);
+  const stdout = vi.spyOn(process.stdout, 'write');
+  const stderr = vi.spyOn(process.stderr, 'write');
+  const addresses: string[] = [secondEmail];
+  try {
+    for (let sample = 0; sample < 8; sample += 1) {
+      const order: ('occupied' | 'free')[] =
+        sample % 2 === 0 ? ['occupied', 'free'] : ['free', 'occupied'];
+      for (const kind of order) {
+        const address = `timing-${randomUUID()}@prumo.test`;
+        const target =
+          kind === 'occupied'
+            ? secondEmail
+            : `timing-target-${randomUUID()}@prumo.test`;
+        addresses.push(address, target);
+        const created = await admin.query<{ id: string }>(
+          'INSERT INTO identity.users(email, email_normalized, password_hash) VALUES ($1,$1,$2) RETURNING id',
+          [address, hash],
+        );
+        extraUserIds.push(created.rows[0].id);
+        const cookie = await signIn(address);
+        const started = performance.now();
+        const response = await mutation('/api/auth/email-changes', cookie)
+          .send({ newEmail: target, currentPassword: password })
+          .expect(202);
+        durations[kind].push(performance.now() - started);
+        expect(response.text).toBe('');
+        expect(response.headers['cache-control']).toBe('no-store');
+        const statusStarted = performance.now();
+        const status = await request(app.getHttpServer())
+          .get('/api/auth/email-status')
+          .set('Cookie', cookie)
+          .expect(200);
+        statusDurations[kind].push(performance.now() - statusStarted);
+        expect(status.headers['cache-control']).toBe('no-store');
+        expect(status.body.pendingChange).toMatchObject({
+          newEmail: target,
+          requiresOldCode: false,
+        });
+        const captured = lifecycle.takeCaptured();
+        expect(captured).toHaveLength(kind === 'free' ? 1 : 0);
+      }
+    }
+    const written = [...stdout.mock.calls, ...stderr.mock.calls]
+      .map(([chunk]) => String(chunk))
+      .join('');
+    for (const address of addresses) expect(written).not.toContain(address);
+    const median = (values: number[]) => {
+      const sorted = [...values].sort((left, right) => left - right);
+      return (sorted[3] + sorted[4]) / 2;
+    };
+    expect(
+      Math.abs(median(durations.occupied) - median(durations.free)),
+    ).toBeLessThan(75);
+    expect(
+      Math.abs(median(statusDurations.occupied) - median(statusDurations.free)),
+    ).toBeLessThan(75);
+  } finally {
+    stdout.mockRestore();
+    stderr.mockRestore();
+  }
+}, 30_000);
+
+test('private UUID invitation and email change work in both row-lock orders', async () => {
+  const ownerEmail = `invite-owner-${randomUUID()}@prumo.test`;
+  const hash = await new PasswordHasher({ logN: 10 }).hash(password);
+  const owner = await admin.query<{ id: string }>(
+    'INSERT INTO identity.users(email, email_normalized, password_hash) VALUES ($1,$1,$2) RETURNING id',
+    [ownerEmail, hash],
+  );
+  extraUserIds.push(owner.rows[0].id);
+  const ownerCookie = await signIn(ownerEmail);
+  const householdIds: string[] = [];
+  try {
+    for (const first of ['invite', 'change'] as const) {
+      const inviteeEmail = `invitee-${randomUUID()}@prumo.test`;
+      const created = await admin.query<{ id: string }>(
+        'INSERT INTO identity.users(email, email_normalized, password_hash) VALUES ($1,$1,$2) RETURNING id',
+        [inviteeEmail, hash],
+      );
+      const inviteeId = created.rows[0].id;
+      extraUserIds.push(inviteeId);
+      const inviteeCookie = await signIn(inviteeEmail);
+      const household = await mutation('/api/households', ownerCookie)
+        .send({ name: `Email change race ${randomUUID()}` })
+        .expect(201);
+      const householdId = household.body.id as string;
+      householdIds.push(householdId);
+      const nextEmail = `invitee-new-${randomUUID()}@prumo.test`;
+      await mutation('/api/auth/email-changes', inviteeCookie)
+        .send({ newEmail: nextEmail, currentPassword: password })
+        .expect(202);
+      const [proof] = lifecycle.takeCaptured();
+      expect(proof).toMatchObject({ to: nextEmail, purpose: 'change_new' });
+
+      const blocker = await admin.connect();
+      const pending: Promise<request.Response>[] = [];
+      let locked = false;
+      try {
+        await blocker.query('BEGIN');
+        locked = true;
+        await blocker.query(
+          'SELECT id FROM identity.users WHERE id = $1 FOR UPDATE',
+          [inviteeId],
+        );
+        const operations = {
+          invite: () =>
+            mutation(`/api/households/${householdId}/invitations`, ownerCookie)
+              .send({ inviteeUserId: inviteeId })
+              .then((response) => response),
+          change: () =>
+            mutation('/api/auth/email-changes/confirm', inviteeCookie)
+              .send({ newCode: proof.code })
+              .then((response) => response),
+        };
+        const waitForBlocked = async (count: number) => {
+          for (let attempt = 0; attempt < 100; attempt += 1) {
+            const activity = await admin.query<{ count: string }>(
+              "SELECT count(*)::text AS count FROM pg_stat_activity WHERE usename = 'prumo_app' AND wait_event_type = 'Lock' AND cardinality(pg_blocking_pids(pid)) > 0",
+            );
+            if (Number(activity.rows[0].count) >= count) return;
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+          throw new Error(`Expected ${count} operations blocked by user row`);
+        };
+        pending.push(operations[first]());
+        await waitForBlocked(1);
+        pending.push(operations[first === 'invite' ? 'change' : 'invite']());
+        await waitForBlocked(2);
+        await blocker.query('COMMIT');
+        locked = false;
+        const [firstResponse, secondResponse] = await Promise.all(pending);
+        const invitation = first === 'invite' ? firstResponse : secondResponse;
+        const changed = first === 'change' ? firstResponse : secondResponse;
+        expect(invitation.status).toBe(202);
+        expect(changed.status).toBe(204);
+        const newCookie = await signIn(nextEmail);
+        const inbox = await request(app.getHttpServer())
+          .get('/api/auth/invitations')
+          .set('Cookie', newCookie)
+          .expect(200);
+        expect(inbox.body).toEqual([
+          expect.objectContaining({
+            id: invitation.body.requestId,
+            householdId,
+            role: 'VIEWER',
+          }),
+        ]);
+        await mutation(
+          `/api/auth/invitations/${invitation.body.requestId}/accept`,
+          newCookie,
+        )
+          .send({})
+          .expect(204);
+        const membership = await admin.query<{ role: string }>(
+          'SELECT role FROM household.memberships WHERE household_id = $1 AND user_id = $2 AND active',
+          [householdId, inviteeId],
+        );
+        expect(membership.rows).toEqual([{ role: 'VIEWER' }]);
+      } finally {
+        if (locked) await blocker.query('ROLLBACK');
+        blocker.release();
+        await Promise.allSettled(pending);
+      }
+    }
+  } finally {
+    for (const householdId of householdIds) {
+      await admin.query(
+        'DELETE FROM household.events WHERE household_id = $1',
+        [householdId],
+      );
+      await admin.query(
+        'DELETE FROM household.invitation_requests WHERE household_id = $1',
+        [householdId],
+      );
+      await admin.query(
+        'DELETE FROM household.invitations WHERE household_id = $1',
+        [householdId],
+      );
+      await admin.query(
+        'DELETE FROM household.memberships WHERE household_id = $1',
+        [householdId],
+      );
+      await admin.query('DELETE FROM household.households WHERE id = $1', [
+        householdId,
+      ]);
+    }
+  }
+}, 30_000);
 
 test('password recovery cancels a pending email change', async () => {
   const address = `recover-pending-${randomUUID()}@prumo.test`;

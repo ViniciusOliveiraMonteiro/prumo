@@ -1562,6 +1562,8 @@ Login, importação e IA podem ser explorados para brute force, negação de ser
 - limites distribuídos;
 - proteção contra abuso sem bloquear uso legítimo.
 
+Ao detalhar o ensaio de e-mail da [ADR-045](docs/decisions/ADR-045-verified-email-lifecycle-proposal.md#limites-por-origem-de-rede--parâmetro-de-ensaio-aprovado-em-2026-10-26), distinguir a janela móvel exata **aprovada** de 30 pedidos em cinco minutos da taxa média de seis pedidos por minuto com rajadas. O [`limit_req` do Nginx](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html) usa a segunda semântica; os dois controles podem aceitar quantidades diferentes perto do limite. A chave por IP só representa a conexão de entrada observada por uma borda confiável; `Origin` e `X-Forwarded-For` enviados pelo cliente não provam a origem de rede. Testar também pessoas distintas atrás do mesmo NAT, concorrência, reinício e recuperação da janela.
+
 ### Exercício aplicado
 
 Simule 100 requests de login e 20 imports simultâneos; defina comportamento desejado e métricas.

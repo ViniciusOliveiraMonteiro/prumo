@@ -6,6 +6,8 @@ export type PruneResult = {
   signInAttempts: number;
   recoveryAttempts: number;
   emailOutbox: number;
+  emailOutboxHistory: number;
+  emailIssueAttempts: number;
   emailChallenges: number;
   emailChanges: number;
 };
@@ -31,6 +33,14 @@ export async function pruneExpiredIdentityData(
         payload_iv = NULL, payload_tag = NULL
       WHERE status = 'pending' AND expires_at <= now()
     `);
+    const emailOutboxHistory = await tx.execute(sql`
+      DELETE FROM identity.email_delivery_outbox
+      WHERE status <> 'pending' AND created_at < now() - interval '7 days'
+    `);
+    const emailIssueAttempts = await tx.execute(sql`
+      DELETE FROM identity.email_issue_attempts
+      WHERE created_at < now() - interval '48 hours'
+    `);
     const emailChallenges = await tx.execute(sql`
       DELETE FROM identity.email_challenges WHERE expires_at <= now()
     `);
@@ -42,6 +52,8 @@ export async function pruneExpiredIdentityData(
       signInAttempts: signInAttempts.rowCount ?? 0,
       recoveryAttempts: recoveryAttempts.rowCount ?? 0,
       emailOutbox: emailOutbox.rowCount ?? 0,
+      emailOutboxHistory: emailOutboxHistory.rowCount ?? 0,
+      emailIssueAttempts: emailIssueAttempts.rowCount ?? 0,
       emailChallenges: emailChallenges.rowCount ?? 0,
       emailChanges: emailChanges.rowCount ?? 0,
     };
