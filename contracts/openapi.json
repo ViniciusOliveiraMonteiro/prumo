@@ -948,6 +948,424 @@
           "identity"
         ]
       }
+    },
+    "/api/households/{householdId}/accounts": {
+      "post": {
+        "operationId": "AccountController_create",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID identifying this creation request.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      },
+      "get": {
+        "operationId": "AccountController_list",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/households/{householdId}/accounts/{accountId}": {
+      "get": {
+        "operationId": "AccountController_get",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transactions/income": {
+      "post": {
+        "operationId": "IncomeController_create",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID identifying the income creation request.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncomeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "income"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transactions/{eventId}": {
+      "get": {
+        "operationId": "IncomeController_get",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "income"
+        ]
+      }
+    },
+    "/api/households/{householdId}/accounts/{accountId}/balance": {
+      "get": {
+        "operationId": "IncomeController_balance",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "income"
+        ]
+      }
+    },
+    "/api/households/{householdId}/accounts/{accountId}/movements": {
+      "get": {
+        "operationId": "IncomeController_movements",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "income"
+        ]
+      }
     }
   },
   "info": {
@@ -1289,6 +1707,265 @@
           "householdName",
           "role",
           "expiresAt"
+        ]
+      },
+      "AccountBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "openingDate": {
+            "type": "string",
+            "example": "2026-11-03",
+            "format": "date"
+          },
+          "openingBalanceCents": {
+            "type": "string",
+            "example": "-12345",
+            "description": "Signed integer cents as a decimal string."
+          }
+        },
+        "required": [
+          "name",
+          "currency",
+          "openingDate",
+          "openingBalanceCents"
+        ]
+      },
+      "AccountResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "openingDate": {
+            "type": "string",
+            "example": "2026-11-03",
+            "format": "date"
+          },
+          "openingBalanceCents": {
+            "type": "string",
+            "example": "-12345",
+            "description": "Signed integer cents as a decimal string."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "name",
+          "currency",
+          "openingDate",
+          "openingBalanceCents",
+          "id"
+        ]
+      },
+      "IncomeBody": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "example": "20000",
+            "description": "Positive integer cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "required": [
+          "accountId",
+          "amountCents",
+          "currency",
+          "effectiveDate",
+          "description"
+        ]
+      },
+      "IncomeResponse": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "example": "20000",
+            "description": "Positive integer cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "movementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "RECEIVED_INCOME"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "PENDING_PRE_OPENING"
+            ]
+          },
+          "pendingReason": {
+            "type": "string",
+            "enum": [
+              "PRE_OPENING"
+            ],
+            "nullable": true
+          },
+          "dateProvenance": {
+            "type": "string",
+            "enum": [
+              "MANUAL_USER"
+            ]
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sequence": {
+            "type": "string",
+            "description": "Persistent registration order, not real-world chronology.",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        },
+        "required": [
+          "accountId",
+          "amountCents",
+          "currency",
+          "effectiveDate",
+          "description",
+          "eventId",
+          "movementId",
+          "version",
+          "type",
+          "state",
+          "pendingReason",
+          "dateProvenance",
+          "recordedAt",
+          "sequence"
+        ]
+      },
+      "BalanceResponse": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "openingBalanceCents": {
+            "type": "string"
+          },
+          "calculable": {
+            "type": "boolean"
+          },
+          "balanceCents": {
+            "type": "string",
+            "nullable": true,
+            "description": "Exact signed integer cents. Aggregate has no individual-entry limit."
+          }
+        },
+        "required": [
+          "currency",
+          "date",
+          "openingDate",
+          "openingBalanceCents",
+          "calculable",
+          "balanceCents"
+        ]
+      },
+      "MovementPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cursor by effective day and registration sequence. Restart pagination after retroactive insertions for a complete view."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
         ]
       }
     }

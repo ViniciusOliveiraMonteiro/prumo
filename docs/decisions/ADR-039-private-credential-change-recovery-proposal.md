@@ -68,6 +68,16 @@ O limite atual de cinco falhas por e-mail em 15 minutos protege a **tentativa de
 
 Antes de implementar recuperação externa, decidir separadamente: quotas para pedido de envio por conta e por origem confiável; tentativas de consumo por token e conta, incluindo contas desconhecidas; custo tolerável de hash e envio; duração de bloqueio e efeitos sobre titulares atrás de NAT; retenção dos contadores e resposta uniforme. Testar concorrência, enumeração, falha da borda e reinício na topologia escolhida. A política privada permanece em vigor apenas para o recorte local; nenhum valor externo foi aprovado por esta revisão.
 
+**Matriz para a próxima decisão, revista em 2026-10-28:**
+
+| Operação | Orçamento a definir | Evidência exigida |
+|---|---|---|
+| Pedido de envio de recuperação, ainda inexistente | Por conta elegível e por origem de rede confiável; limitar também custo e frequência de mensagens | Conta conhecida/desconhecida com mesma resposta observável; concorrência, NAT, falha do transporte e reinício sem envio duplicado fora da política |
+| Consumo de prova enviada por e-mail, ainda inexistente | Por desafio e conta, inclusive tentativas com identificador inválido; expiração e substituição explícitas | Replay, força bruta, corrida com reenvio/reset e custo de hash; erro sem enumeração |
+| Consumo de código offline atual | Cinco falhas por e-mail em 15 minutos apenas no acesso privado; revisão externa separada | Medir bloqueio induzido e comparar conta existente/inexistente; não reaproveitar automaticamente o orçamento do pedido de envio |
+
+A proteção de `POST /api/auth/sign-in` pertence à [ADR-038](ADR-038-private-sign-in-attempt-limit-proposal.md#revisão-do-gate-externo-em-2026-10-28--proposta-sem-parâmetros-aprovados). A proteção de emissão de verificação e troca de endereço pertence à ADR-045. O fluxo de recuperação externa deve escolher e testar seus próprios números antes de existir rota pública; a tabela não aprova implantação nem altera o limite privado.
+
 ## Implementação e gates pendentes
 
 `POST /api/auth/change-password` recebe `currentPassword` e `newPassword` em JSON sob cookie de sessão. Responde `204` e limpa o cookie em caso de sucesso; `401` para sessão ausente ou senha atual incorreta, `400` para corpo inválido e `403` para origem hostil. A API usa atualização condicional pelo hash anterior, de modo que duas trocas simultâneas da mesma senha não possam confirmar ambas. O teste E2E local cobre senha incorreta, CSRF, revogação de duas sessões, limpeza das falhas de login, senha antiga rejeitada, senha nova aceita e duas trocas concorrentes. Em 2026-10-19, um gatilho de teste fez a exclusão das sessões falhar após a atualização do hash; a API respondeu `500`, o hash antigo e a sessão permaneceram válidos, e a senha proposta foi rejeitada. O gatilho foi removido ao fim do teste. Ainda falta repetir a validação em HTTPS/proxy.

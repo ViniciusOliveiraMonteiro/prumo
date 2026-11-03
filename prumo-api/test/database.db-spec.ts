@@ -9,7 +9,9 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 config({ path: path.resolve(process.cwd(), '../.env'), quiet: true });
 
 const connectionString = process.env.PRUMO_DATABASE_URL;
-if (!connectionString) throw new Error('PRUMO_DATABASE_URL is required');
+const appConnectionString = process.env.PRUMO_APP_DATABASE_URL;
+if (!connectionString || !appConnectionString)
+  throw new Error('PRUMO_DATABASE_URL and PRUMO_APP_DATABASE_URL are required');
 
 const suffix = process.pid.toString();
 const schema = `prumo_lab_${suffix}`;
@@ -20,6 +22,10 @@ const password = randomBytes(24).toString('hex');
 const ownerPassword = randomBytes(24).toString('hex');
 const bypassPassword = randomBytes(24).toString('hex');
 const admin = new pg.Pool({ connectionString });
+const restricted = new pg.Pool({
+  connectionString: appConnectionString,
+  max: 1,
+});
 const appUrl = new URL(connectionString);
 appUrl.username = role;
 appUrl.password = password;
@@ -81,8 +87,10 @@ beforeAll(async () => {
     GRANT USAGE, CREATE ON SCHEMA ${schema} TO ${ownerRole};
     ALTER TABLE ${schema}.probe_records OWNER TO ${ownerRole};
     GRANT USAGE ON SCHEMA ${schema} TO ${role};
+    GRANT USAGE ON SCHEMA ${schema} TO prumo_app;
     GRANT USAGE ON SCHEMA ${schema} TO ${bypassRole};
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${schema} TO ${role};
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ${schema}.probe_records TO prumo_app;
     GRANT SELECT ON ${schema}.probe_records TO ${bypassRole};
     GRANT USAGE ON ALL SEQUENCES IN SCHEMA ${schema} TO ${role};
   `);
@@ -90,6 +98,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await app.end();
+  await restricted.end();
   await jobPool.end();
   await owner.end();
   await bypass.end();
@@ -182,6 +191,72 @@ test('application role cannot read or write another household and pool resets co
     expect(afterReuse.rows).toHaveLength(0);
   } finally {
     client.release();
+  }
+});
+
+test('real prumo_app role fails closed and loses household context on pool reuse', async () => {
+  const role = await restricted.query<{
+    current_user: string;
+    rolbypassrls: boolean;
+  }>(`
+    SELECT current_user, rolbypassrls
+    FROM pg_roles WHERE rolname = current_user
+  `);
+  expect(role.rows[0]).toEqual({
+    current_user: 'prumo_app',
+    rolbypassrls: false,
+  });
+  await admin.query(
+    `INSERT INTO ${schema}.probe_records (household_id, amount)
+     VALUES ('A', 424241), ('B', 424242)`,
+  );
+  const client = await restricted.connect();
+  const backendPid = (
+    await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+  ).rows[0].pid;
+  let transactionOpen = false;
+  try {
+    const probe = `SELECT household_id FROM ${schema}.probe_records
+      WHERE amount IN (424241, 424242) ORDER BY amount`;
+    expect((await client.query(probe)).rows).toHaveLength(0);
+    await client.query('BEGIN');
+    transactionOpen = true;
+    await client.query("SELECT set_config('prumo.household_id', 'A', true)");
+    const visible = await client.query<{ household_id: string }>(probe);
+    expect(visible.rows.map((row) => row.household_id)).toEqual(['A']);
+    const crossUpdate = await client.query(
+      `UPDATE ${schema}.probe_records SET amount = 0 WHERE amount = 424242`,
+    );
+    expect(crossUpdate.rowCount).toBe(0);
+    await expect(
+      client.query(
+        `INSERT INTO ${schema}.probe_records (household_id, amount)
+         VALUES ('B', 424243)`,
+      ),
+    ).rejects.toThrow();
+    await client.query('ROLLBACK');
+    transactionOpen = false;
+    expect((await client.query(probe)).rows).toHaveLength(0);
+  } finally {
+    if (transactionOpen) await client.query('ROLLBACK');
+    client.release();
+  }
+  const reused = await restricted.connect();
+  try {
+    const currentPid = await reused.query<{ pid: number }>(
+      'SELECT pg_backend_pid() AS pid',
+    );
+    expect(currentPid.rows[0].pid).toBe(backendPid);
+    expect(
+      (
+        await reused.query(
+          `SELECT household_id FROM ${schema}.probe_records
+           WHERE amount IN (424241, 424242)`,
+        )
+      ).rows,
+    ).toHaveLength(0);
+  } finally {
+    reused.release();
   }
 });
 

@@ -44,6 +44,12 @@ Uma alternativa ao bloqueio fixo é devolver atrasos curtos após falhas sucessi
 
 **Recomendação do estudo:** conservar a política aceita no acesso privado. Antes de substituí-la para usuários externos, medir rajadas de hash, revisar a recuperação de credencial e a origem confiável no proxy, e avaliar se o ganho de disponibilidade do candidato compensa as tentativas adicionais. Nenhum dos números acima é prescrito por NIST ou OWASP; são hipóteses para avaliação do Prumo.
 
+### Revisão do gate externo em 2026-10-28 — proposta, sem parâmetros aprovados
+
+O contador atual por e-mail protege uma identidade específica, mas não limita uma origem que testa muitos e-mails nem o custo de hashes iniciados em paralelo antes de registrar falhas. O ensaio por IP da [ADR-045](ADR-045-verified-email-lifecycle-proposal.md#limites-por-origem-de-rede--parâmetro-de-ensaio-aprovado-em-2026-10-26) cobre somente dois pedidos de emissão de e-mail; **não** deve ser aplicado a `POST /api/auth/sign-in` por analogia. Para o acesso externo, comparar a política atual com espera progressiva e teto adicional usando uma medida de custo: hashes iniciados por segundo e por origem observada, tentativas aceitas por conta, recusas indevidas de titulares atrás de NAT e tempo de recuperação após ataque. A escolha precisa declarar separadamente a quota por conta e a proteção por origem, com janelas, respostas e retenção próprias.
+
+**Gate proposto antes da decisão:** reproduzir rajada concorrente para uma conta e pulverização entre contas sintéticas; medir trabalho iniciado antes do `429`; ensaiar dois titulares no mesmo NAT; comparar conta existente e inexistente em status, corpo e diferença grosseira de tempo; desligar o contador e confirmar falha fechada sem revelar a conta; repetir pela borda implantada com cabeçalhos de IP forjados. Registrar o limiar de bloqueio legítimo aceitável e o custo medido antes de aprovar números externos. A política privada de dez falhas em 15 minutos permanece a única aprovada.
+
 ## Limites e gates
 
 - Um atacante pode consumir o orçamento de uma conta e impedir temporariamente seu login. A janela limita a duração; a alternativa de espera progressiva deve ser reavaliada antes de fixar bloqueio e números para usuários externos.

@@ -82,6 +82,17 @@ try {
   await pool.query(
     'GRANT SELECT, INSERT, DELETE ON household.invitation_requests TO prumo_app',
   );
+  await pool.query('GRANT USAGE ON SCHEMA finance TO prumo_app');
+  await pool.query('GRANT SELECT, INSERT ON finance.accounts TO prumo_app');
+  await pool.query(
+    'GRANT SELECT, INSERT ON finance.account_requests TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT ON finance.events, finance.event_versions, finance.movements, finance.income_requests TO prumo_app',
+  );
+  await pool.query(
+    'GRANT USAGE ON SEQUENCE finance.movements_sequence_seq TO prumo_app',
+  );
   process.stdout.write('Local application role is ready.\n');
 } finally {
   await pool.end();

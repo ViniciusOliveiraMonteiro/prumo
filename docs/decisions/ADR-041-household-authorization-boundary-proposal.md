@@ -1,8 +1,8 @@
 # ADR-041: fronteira de autorização por household
 
-- **Status:** aceita em 2026-10-21 para o primeiro recorte de household; matriz financeira, gestão pública de membros e RLS pendentes
+- **Status:** aceita em 2026-10-21 para o primeiro recorte de household e em 2026-11-03 para a matriz e respostas do primeiro fluxo financeiro; gestão pública de membros e RLS pendentes
 - **Data:** 2026-10-20
-- **Aprovação:** o usuário aprovou o primeiro recorte e a matriz mínima em 2026-10-21
+- **Aprovação:** o usuário aprovou o primeiro recorte e a matriz mínima em 2026-10-21; aprovou a matriz e as respostas do primeiro fluxo financeiro em 2026-11-03
 - **Decisões relacionadas:** a [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo) define a baseline de isolamento; a [ADR-036](ADR-036-row-level-security-proposal.md#gates-antes-da-decisão-final) mantém RLS em avaliação; a [ADR-037](ADR-037-private-identity-bootstrap-proposal.md#modelo-e-fluxo-propostos) implementou identidade e sessão privadas
 
 ## Contexto
@@ -73,5 +73,24 @@ Em 2026-10-21, a migração `0006_households.sql` e os grants de `prumo_app` for
 ## Pendências e conceitos para estudo
 
 Continuam pendentes o contexto autorizado reutilizável para recursos financeiros, a matriz final, troca de papéis, auditoria das mudanças futuras, desempenho e política de jobs. A [ADR-042](ADR-042-minimal-membership-management-proposal.md#matriz-mínima-aprovada) aprovou e validou localmente a listagem/revogação com auditoria; a [ADR-043](ADR-043-household-invitation-acceptance-proposal.md#recorte-privado-aprovado) aprovou separadamente convite e aceite privados, com requisito de aceite por e-mail na versão final ainda sem protocolo decidido. O esquema físico deste recorte é mínimo e não decide o esquema financeiro. O grant `UPDATE` de membership precisa ser reavaliado junto com RLS e com o contrato de gestão de membros. A implantação em homologação ou produção continua adiada e não é requisito para o laboratório local.
+
+### Contexto autorizado para o primeiro fluxo financeiro — aprovado em 2026-11-03
+
+**Estado:** o usuário aprovou a matriz e as respostas abaixo em 2026-11-03 para o primeiro fluxo financeiro; a implementação, o esquema físico e a decisão de RLS permanecem pendentes. O primeiro fluxo é o de contas, receita recebida, despesa paga diretamente, transferência e consulta de saldo/histórico descrito no [recorte conceitual](../domain/accounts-transactions-conceptual-slice.md#limite-do-primeiro-fluxo). A [ADR-029](ADR-029-first-flow-household-isolation.md#decisão-para-o-primeiro-fluxo) já aprova membership ativa, escopo de recursos e vínculos; esta seção delimita como passar essa autorização pelo código.
+
+| Ação aprovada | `OWNER` | `MEMBER` | `VIEWER` | Sem membership ativa |
+|---|---|---|---|---|
+| `finance:read` — conta, evento, movimento, saldo, lista e agregado | permitir | permitir | permitir | negar |
+| `finance:write` — abrir conta e registrar receita, despesa ou transferência do primeiro fluxo | permitir | permitir | negar | negar |
+
+**Respostas aprovadas:** sessão ausente → `401`; household inexistente ou sem membership ativa → `404`; recurso financeiro inexistente ou pertencente a outro household → o mesmo `404`, sem saldo, descrição ou identificação do outro household; membership ativa com papel insuficiente para a ação → `403`. Esse padrão acompanha o primeiro recorte de household e evita que um ID de outro household revele sua existência. O corpo exato e os códigos por endpoint ainda precisam entrar no contrato OpenAPI quando os endpoints forem decididos.
+
+Para **cada leitura**, a sessão identifica o ator, o household recebido seleciona apenas o alvo, e a API consulta membership ativa e papel na operação. O serviço cria um contexto interno com `userId`, `householdId` e ação autorizada; o repositório recebe esse contexto e inclui o household em filtros por ID, listas, saldos e agregados. Uma leitura iniciada antes da revogação pode terminar, mas a próxima operação após seu commit deve falhar. Não reutilizar autorização em cache entre operações.
+
+Para **cada escrita**, a consulta de membership ativa com `FOR SHARE`, a avaliação de `finance:write`, a resolução de todos os recursos referenciados e a mutação financeira ocorrem na mesma transação e conexão de `prumo_app`. A revogação altera a mesma linha bloqueada. O contexto interno só é criado após a verificação; um serviço não aceita `householdId` isolado como autorização. Conta de origem, conta de destino, categoria e eventos vinculados devem pertencer ao household selecionado, com filtros e constraints de vínculo conforme a ADR-029. Uma falha em qualquer referência desfaz o evento inteiro; transferência entre households é recusada mesmo quando o ator participa de ambos. A checagem de versão e o replay idempotente da ADR-027 usam o mesmo contexto. Se RLS vier a ser aprovada, `set_config(..., true)` entra nessa transação após a autorização, sem mudar a política da API.
+
+**Alternativas e custo:** repetir checagens diretamente em cada controller é curto inicialmente, mas permite omissões e não mantém o lock até o commit. Usar somente RLS depende de um valor que a própria role define e não decide ação nem membership. Um serviço de autorização transacional com contexto tipado repete menos regras entre os recursos, mas exige que todos os repositórios aceitem o contexto e que leituras e escritas sejam testadas pelo caminho real. O serviço atual de household já demonstra `FOR SHARE` na escrita e escopo na leitura; ele não é ainda um autorizador financeiro reutilizável. RLS permanece decisão separada na [ADR-036](ADR-036-row-level-security-proposal.md#gates-antes-da-decisão-final).
+
+**Gate de implementação:** testar com duas contas e dois households, `OWNER`/`MEMBER`/`VIEWER`, uma conta que participa de ambos, IDs trocados, lista/agregado, vínculo cruzado e transferência com destino externo. Demonstrar as duas ordens de revogação contra escrita financeira pelo caminho sessão → API → transação → `prumo_app`, além de rollback e reuso do pool. Só após o esquema físico correspondente avaliar policies, constraints e decisão final de RLS. Jobs, exportação, exclusão e recursos financeiros posteriores exigem ações próprias; esta aprovação não lhes concede permissão.
 
 Estudar: autenticação versus autorização, RBAC e autorização por recurso, revogação, `SELECT FOR SHARE`, ordem de commits, escopo por household, IDOR/BOLA e RLS como defesa adicional. Ver [SEC-003](../../CADERNO_DE_ESTUDOS_APLICADO.md#sec-003---autenticação-autorização-e-identidade), [SEC-005](../../CADERNO_DE_ESTUDOS_APLICADO.md#sec-005---least-privilege-rbac-e-autorização-por-recurso) e [SEC-006](../../CADERNO_DE_ESTUDOS_APLICADO.md#sec-006---isolamento-entre-households-e-defense-in-depth).

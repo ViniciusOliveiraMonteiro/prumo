@@ -1,6 +1,8 @@
 # Guia da aplicação
 
-**Estado em 2026-10-23:** Prumo está no bootstrap de engenharia. A web mostra uma página inicial estática e uma página `/conta` renderizada no servidor com a identidade da sessão atual; a API oferece saúde, login privado com sessão revogável, troca de senha, códigos de recuperação pré-MVP e limite local de tentativas. Os recortes de household, gestão mínima de membros e convite privado passaram no PostgreSQL local com 21 testes E2E e revisão independente. O ciclo de e-mail verificado tem implementação local com captura apenas em testes, validada e revisada com gates adicionais abertos; as rotas retornam `503` no runtime normal. Ainda não há formulário de login na web, envio ou aceite por e-mail, contas, transações ou indicadores financeiros utilizáveis. As regras financeiras abaixo são decisões para orientar a implementação, não funcionalidades prontas.
+**Estado em 2026-11-03:** Prumo mantém o bootstrap privado: a web mostra página inicial e `/conta` com a identidade da sessão; a API oferece identidade, household e convite privado. O ciclo de e-mail verificado tem captura apenas em testes e retorna `503` no runtime normal. O primeiro recurso de conta com marco inicial foi implementado e passou em E2E no PostgreSQL local; a revisão independente e os checks finais constam na [ADR-046](../decisions/ADR-046-first-financial-account-proposal.md#implementação-local-em-2026-11-03). Ainda não há formulário de login nem tela financeira na web, envio ou aceite por e-mail, nem indicadores financeiros utilizáveis; a API local já oferece receita manual, movimentos e saldo diário.
+
+A [ADR-047](../decisions/ADR-047-first-manual-income-and-balance-proposal.md#decisão-delimitada) aprovou o primeiro recorte de receita manual, movimento aplicado ou pendente antes do marco e saldo diário exato. A migração e as rotas locais foram implementadas; o E2E financeiro e o contrato gerado passaram. A revisão independente foi concluída; a lacuna de teste de rollback foi corrigida e revisada novamente.
 
 ## Propósito
 
@@ -11,11 +13,11 @@ Prumo pretende reunir os dados financeiros de uma residência para explicar rece
 | Parte | Responsabilidade atual | Situação |
 |---|---|---|
 | `prumo-web/` | Página inicial Next.js e `/conta` com identidade da sessão; encaminha `/api` e `/api/*` à API local. | Bootstrap funcional, sem formulário de login ou telas financeiras. |
-| `prumo-api/` | Saúde, identidade privada, household, gestão mínima de memberships, convite privado, proteção de origem e OpenAPI. | Criação, leitura própria, alteração de nome, listagem/revogação de membros por `OWNER` e convite por UUID com aceite autenticado validados no banco local; sem aceite por e-mail, autorização financeira ou endpoints financeiros. |
-| PostgreSQL local | Migrações de verificação e identidade; laboratórios de transações/RLS. | Não contém esquema financeiro de produto. |
+| `prumo-api/` | Saúde, identidade privada, household, gestão mínima de memberships, convite privado, primeira conta com marco inicial, receita manual, movimentos, saldo diário, proteção de origem e OpenAPI. | Conta, receita manual, movimentos e saldo sob a matriz da ADR-041 validados em E2E local; sem aceite por e-mail. |
+| PostgreSQL local | Migrações de identidade, household, conta e receita manual; laboratório de RLS. | Contém contas, eventos, versões, movimentos e pedidos idempotentes; a decisão final de RLS continua pendente. |
 | `contracts/openapi.json` e tipos gerados na web | Contrato HTTP derivado da API. | Contém apenas o contrato implementado; mudanças exigem geração e check. |
 
-O [estado atual da sprint](../planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-3--bootstrap-de-engenharia) registra status, critério de aceite e próxima ação. A seção [Criação e integração](../operations/BOOTSTRAP_SPRINT_3.md#criação-e-integração) guarda evidências e limites dos testes técnicos.
+O [estado da Sprint 5](../planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-5--contas-e-transações) registra status, critério de aceite e próxima ação dos recortes de conta e receita. A seção [Criação e integração](../operations/BOOTSTRAP_SPRINT_3.md#criação-e-integração) guarda evidências e limites do bootstrap técnico.
 
 ## Tecnologias e limites
 
@@ -86,7 +88,7 @@ Para remover sessões vencidas e contadores de autenticação com mais de 24 hor
 | `pnpm format:check` | Formatação dos arquivos de código cobertos pelo script. |
 | `pnpm typecheck` | Tipos das duas aplicações. |
 | `pnpm test` | Testes unitários configurados nas aplicações. |
-| `pnpm --filter prumo-api test:e2e` | Rotas da API, identidade e recortes de household, memberships e convite; requer migração e role local. Os arquivos direcionados desses três recortes passaram com 21 casos em 2026-10-21. |
+| `pnpm --filter prumo-api test:e2e` | Rotas da API, identidade, household, memberships, convite e primeira conta; requer migração e role local. O arquivo direcionado de conta passou com seis casos em 2026-11-03. |
 | `pnpm --filter prumo-api test:db` | Laboratórios e grants com PostgreSQL local ativo. |
 | `pnpm contract:check` | OpenAPI e tipos gerados sincronizados. |
 | `pnpm build` | Builds da web e da API. |

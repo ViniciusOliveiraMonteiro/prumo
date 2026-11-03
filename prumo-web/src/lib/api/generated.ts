@@ -352,6 +352,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/households/{householdId}/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AccountController_list"];
+        put?: never;
+        post: operations["AccountController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/accounts/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AccountController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transactions/income": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["IncomeController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transactions/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["IncomeController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/accounts/{accountId}/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["IncomeController_balance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/accounts/{accountId}/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["IncomeController_movements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -451,6 +547,101 @@ export interface components {
             role: "VIEWER";
             /** Format: date-time */
             expiresAt: string;
+        };
+        AccountBody: {
+            name: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /**
+             * Format: date
+             * @example 2026-11-03
+             */
+            openingDate: string;
+            /**
+             * @description Signed integer cents as a decimal string.
+             * @example -12345
+             */
+            openingBalanceCents: string;
+        };
+        AccountResponse: {
+            name: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /**
+             * Format: date
+             * @example 2026-11-03
+             */
+            openingDate: string;
+            /**
+             * @description Signed integer cents as a decimal string.
+             * @example -12345
+             */
+            openingBalanceCents: string;
+            /** Format: uuid */
+            id: string;
+        };
+        IncomeBody: {
+            /** Format: uuid */
+            accountId: string;
+            /**
+             * @description Positive integer cents, at most 9007199254740991.
+             * @example 20000
+             */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            effectiveDate: string;
+            description: string;
+        };
+        IncomeResponse: {
+            /** Format: uuid */
+            accountId: string;
+            /**
+             * @description Positive integer cents, at most 9007199254740991.
+             * @example 20000
+             */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            effectiveDate: string;
+            description: string;
+            /** Format: uuid */
+            eventId: string;
+            /** Format: uuid */
+            movementId: string;
+            /** @enum {number} */
+            version: 1;
+            /** @enum {string} */
+            type: "RECEIVED_INCOME";
+            /** @enum {string} */
+            state: "APPLIED" | "PENDING_PRE_OPENING";
+            /** @enum {string|null} */
+            pendingReason: "PRE_OPENING" | null;
+            /** @enum {string} */
+            dateProvenance: "MANUAL_USER";
+            /** Format: date-time */
+            recordedAt: string;
+            /** @description Persistent registration order, not real-world chronology. */
+            sequence: string;
+        };
+        BalanceResponse: {
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            date: string;
+            /** Format: date */
+            openingDate: string;
+            openingBalanceCents: string;
+            calculable: boolean;
+            /** @description Exact signed integer cents. Aggregate has no individual-entry limit. */
+            balanceCents: string | null;
+        };
+        MovementPageResponse: {
+            items: components["schemas"]["IncomeResponse"][];
+            /** @description Cursor by effective day and registration sequence. Restart pagination after retroactive insertions for a complete view. */
+            nextCursor: string | null;
         };
     };
     responses: never;
@@ -1409,6 +1600,326 @@ export interface operations {
                 content?: never;
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AccountController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AccountController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID identifying this creation request. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AccountController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    IncomeController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID identifying the income creation request. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncomeBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    IncomeController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    IncomeController_balance: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path: {
+                householdId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    IncomeController_movements: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                householdId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementPageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

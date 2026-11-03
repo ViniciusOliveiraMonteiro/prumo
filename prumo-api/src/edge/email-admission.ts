@@ -54,9 +54,10 @@ export function createEmailAdmissionServer(
 ): Server {
   if (secret.length !== 32) throw new Error('Invalid admission key length');
   const key = Buffer.from(secret);
-  return createServer((request, response) => {
+  const server = createServer((request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     if (
+      typeof server.address() !== 'string' &&
       request.socket.remoteAddress !== '127.0.0.1' &&
       request.socket.remoteAddress !== '::1'
     ) {
@@ -119,4 +120,5 @@ export function createEmailAdmissionServer(
       .catch(unavailable)
       .finally(() => clearTimeout(timeout));
   });
+  return server;
 }

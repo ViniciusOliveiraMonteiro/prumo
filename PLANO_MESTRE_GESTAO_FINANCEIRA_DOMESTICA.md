@@ -348,6 +348,8 @@ Entrada econômica atribuível ao household.
 
 **DEFINIDO para receita comum recebida:** entra no relatório principal no mês em que o dinheiro chega, mesmo quando se refere a trabalho de mês anterior (ADR-017). Datas divergentes ou incompletas de movimentos de conta seguem a ADR-025; receita ainda não recebida e interpretação de rótulos por formato exigem regra futura.
 
+**Primeiro registro manual aprovado:** a [ADR-047](docs/decisions/ADR-047-first-manual-income-and-balance-proposal.md#decisão-delimitada) aceita para o recorte local evento de receita recebida com versão inicial e movimento positivo vinculado, dia efetivo afirmado pela pessoa e instante de registro separado. Se o dia alegado for anterior ao marco da conta, evento e movimento ficam pendentes e consultáveis, sem efeito no saldo **nem reconhecimento de receita** até revisão do marco; essa suspensão econômica é apenas deste caso, sem substituir a regra de efeito contestado da ADR-025. O saldo diário desde o marco soma movimentos vigentes aplicados em inteiro exato e é exposto como string de centavos de BRL, podendo exceder o teto de um lançamento individual sem saturação. Implementação, correção do marco, promoção da pendência e relatórios seguem estados separados na ADR.
+
 **DEFINIDO para registro tardio de movimento de conta:** a data efetiva em que o dinheiro entrou ou saiu determina o saldo histórico e, para receita recebida ou despesa paga diretamente, o mês econômico. A data em que o fato foi registrado no Prumo permanece separada na trilha e não desloca o efeito nem o duplica (ADRs 016/017). A ADR-025 define o tratamento conceitual de datas divergentes ou incompletas; interpretação por formato continua pendente.
 
 ### Transfer
@@ -400,7 +402,7 @@ Para compras de consumo, o relatório principal reconhece a despesa integral na 
 
 ## BR-003 - Valores monetários não usam ponto flutuante binário
 
-**DEFINIDO para o MVP:** valores monetários finais de conta, cartão e orçamento usam inteiros em centavos de BRL e carregam `currency = BRL` (ADR-006). Conversão entre moedas fica fora do MVP; cálculos intermediários com frações de centavo exigem precisão decimal exata e quantização documentada. O rateio das compras parceladas no cartão segue a ADR-008; outros rateios, tipo SQL, limite máximo e formato da API ainda serão definidos. Ponto flutuante binário não representa dinheiro no domínio.
+**DEFINIDO para o MVP:** valores monetários finais de conta, cartão e orçamento usam inteiros em centavos de BRL e carregam `currency = BRL` (ADR-006). Conversão entre moedas fica fora do MVP; cálculos intermediários com frações de centavo exigem precisão decimal exata e quantização documentada. O rateio das compras parceladas no cartão segue a ADR-008; outros rateios e formatos para recursos além da primeira conta ainda serão definidos. Para o [primeiro recurso local de conta](docs/decisions/ADR-046-first-financial-account-proposal.md#alternativas-e-proposta), a ADR-046 aceitou `bigint` limitado no banco e string decimal inteira na API; isso não decide todos os contratos financeiros futuros. Ponto flutuante binário não representa dinheiro no domínio.
 
 ## BR-004 - Categoria é dado de negócio
 
@@ -453,6 +455,8 @@ Dados mínimos propostos:
 - moeda;
 - saldo inicial e data de início;
 - visibilidade/estado.
+
+**Primeiro recorte local aprovado e implementado:** a [ADR-046](docs/decisions/ADR-046-first-financial-account-proposal.md#implementação-local-em-2026-11-03) usa UUID, nome, BRL, saldo inicial em centavos e dia do marco, com criação idempotente e leitura escopada por household. Tipo, instituição e visibilidade/estado continuam propostas para etapas posteriores; movimentos, saldo derivado e edição do marco ainda não existem. A matriz de acesso e as respostas do primeiro fluxo foram aprovadas na [ADR-041](docs/decisions/ADR-041-household-authorization-boundary-proposal.md#contexto-autorizado-para-o-primeiro-fluxo-financeiro--aprovado-em-2026-11-03).
 
 **DEFINIDO para saldo:** usar marco inicial no início da data informada e derivar o saldo dos movimentos conhecidos nessa data ou depois; reconciliação mostra diferenças sem ajuste automático. Movimento anterior ao marco fica pendente e só integra o histórico após a pessoa informar e justificar um marco anterior com saldo nessa data, preservando a trilha; o Prumo não presume o saldo anterior. Valor inicial errado pode ser corrigido após movimentos, com justificativa, trilha, recálculo dos saldos e revisão das divergências afetadas, sem criar receita, despesa ou transação. Data do marco informada cedo ou tarde demais pode ser corrigida para outra data com saldo informado nessa nova data, motivo e trilha, mesmo sem movimento anterior a incluir; movimentos que ficarem anteriores permanecem visíveis e pendentes, e os saldos são recalculados. Sem horário confiável, movimentos na mesma data são mostrados por sequência de registro estável e identificada, sem alegar cronologia real; o saldo final do dia independe da ordem. Consulta por data sem horário retorna o saldo ao fim do dia após todos os movimentos efetivos nessa data; antes do marco, mostra saldo não calculável e a data do marco, sem valor presumido (ADR-016). Distinção operacional entre datas dos movimentos e estrutura de persistência permanecem pendentes.
 

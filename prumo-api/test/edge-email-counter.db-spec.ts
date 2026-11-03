@@ -23,12 +23,22 @@ const edgeUrl = new URL(ownerUrl);
 edgeUrl.username = role;
 edgeUrl.password = password;
 const edge = new pg.Pool({ connectionString: edgeUrl.toString(), max: 12 });
+// Both bounds finish before the admission server's one-second HTTP deadline.
+const boundedEdge = new pg.Pool({
+  connectionString: edgeUrl.toString(),
+  max: 12,
+  connectionTimeoutMillis: 350,
+  statement_timeout: 350,
+});
 const key = () => randomBytes(32);
 
 type Reservation = { admitted: boolean; retry_after: number | null };
 
-async function reserve(subjectKey: Buffer): Promise<Reservation> {
-  const result = await edge.query<Reservation>(
+async function reserve(
+  subjectKey: Buffer,
+  pool: pg.Pool = edge,
+): Promise<Reservation> {
+  const result = await pool.query<Reservation>(
     `SELECT admitted, retry_after FROM ${schema}.reserve_email_request($1)`,
     [subjectKey],
   );
@@ -131,6 +141,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await edge.end();
+  await boundedEdge.end();
   await owner.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
   await owner.query(`DROP ROLE IF EXISTS ${role}`);
   await owner.end();
@@ -232,7 +243,7 @@ test('admits through an internal HTTP service and a local proxy harness', async 
   const admission = createEmailAdmissionServer(secret, async (subjectKey) => {
     if (failReservation) throw new Error('injected database failure');
     if (hangReservation) return new Promise<Reservation>(() => {});
-    return reserve(subjectKey);
+    return reserve(subjectKey, boundedEdge);
   });
   const admissionPort = await listen(admission);
   const proxy = createServer((incoming, outgoing) => {
@@ -341,5 +352,81 @@ test('admits through an internal HTTP service and a local proxy harness', async 
   } finally {
     await close(proxy);
     await close(admission);
+  }
+});
+
+test('a blocked SQL reservation rolls back before the HTTP deadline', async () => {
+  const secret = randomBytes(32);
+  const ip = '192.0.2.10';
+  const subject = emailAdmissionSubjectKey(ip, secret);
+  await owner.query(
+    `INSERT INTO ${schema}.email_request_windows(subject_key) VALUES ($1)`,
+    [subject],
+  );
+  const blocker = await owner.connect();
+  const admission = createEmailAdmissionServer(secret, (subjectKey) =>
+    reserve(subjectKey, boundedEdge),
+  );
+  try {
+    await blocker.query('BEGIN');
+    await blocker.query(
+      `SELECT 1 FROM ${schema}.email_request_windows
+       WHERE subject_key = $1 FOR UPDATE`,
+      [subject],
+    );
+    const port = await listen(admission);
+    const response = await call(port, '/admit', 'GET', {
+      'x-prumo-client-ip': ip,
+    });
+    expect(response.status).toBe(503);
+    await blocker.query('COMMIT');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const state = await owner.query<{ count: number }>(
+      `SELECT cardinality(admitted_at) AS count
+       FROM ${schema}.email_request_windows WHERE subject_key = $1`,
+      [subject],
+    );
+    expect(state.rows[0].count).toBe(0);
+  } finally {
+    await blocker.query('ROLLBACK');
+    blocker.release();
+    await close(admission);
+  }
+});
+
+test('a queued reservation times out before it can reach SQL', async () => {
+  const singleConnection = new pg.Pool({
+    connectionString: edgeUrl.toString(),
+    max: 1,
+    connectionTimeoutMillis: 350,
+    statement_timeout: 350,
+  });
+  const occupied = await singleConnection.connect();
+  let occupiedReleased = false;
+  const secret = randomBytes(32);
+  const ip = '192.0.2.11';
+  const subject = emailAdmissionSubjectKey(ip, secret);
+  const admission = createEmailAdmissionServer(secret, (subjectKey) =>
+    reserve(subjectKey, singleConnection),
+  );
+  try {
+    const port = await listen(admission);
+    const response = await call(port, '/admit', 'GET', {
+      'x-prumo-client-ip': ip,
+    });
+    expect(response.status).toBe(503);
+    occupied.release();
+    occupiedReleased = true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const state = await owner.query<{ count: string }>(
+      `SELECT count(*) AS count FROM ${schema}.email_request_windows
+       WHERE subject_key = $1`,
+      [subject],
+    );
+    expect(Number(state.rows[0].count)).toBe(0);
+  } finally {
+    if (!occupiedReleased) occupied.release();
+    await close(admission);
+    await singleConnection.end();
   }
 });
