@@ -6,7 +6,9 @@
 
 ## Contexto
 
-A ADR-030 escolheu NestJS, PostgreSQL e pnpm. O primeiro fluxo financeiro exige confirmação atômica dos efeitos e da identidade do pedido (ADR-027), revisão por versão esperada, autorização e consultas escopadas por household (ADR-029) e valores finais em centavos inteiros (ADR-006). O Plano Mestre ainda não escolhia ORM. O esquema físico, o tipo SQL de dinheiro e RLS continuam pendentes.
+A ADR-030 escolheu NestJS, PostgreSQL e pnpm. O primeiro fluxo financeiro exige confirmação atômica dos efeitos e da identidade do pedido (ADR-027), revisão por versão esperada, autorização e consultas escopadas por household (ADR-029) e valores finais em centavos inteiros (ADR-006). O Plano Mestre ainda não escolhia ORM. Naquele momento, o esquema físico, o tipo SQL de dinheiro e RLS ainda estavam pendentes.
+
+**Atualização de estado em 2026-11-03:** a frase anterior registra o contexto da decisão em outubro. As [ADRs 046](ADR-046-first-financial-account-proposal.md#implementação-local-em-2026-11-03) e [047](ADR-047-first-manual-income-and-balance-proposal.md#implementação-local-em-2026-11-03) já definem esquema local de conta/receita, `bigint` por valor e `numeric` no saldo agregado. RLS e os esquemas dos demais movimentos continuam pendentes.
 
 Esta decisão escolhe a camada de acesso para `prumo-api/` sem definir tabelas. A escolha precisa permitir SQL explícito e transações que levem o mesmo contexto de autorização por toda a operação. O laboratório de RLS continua obrigatório e separado.
 

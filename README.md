@@ -2,7 +2,7 @@
 
 **Inteligência financeira para colocar sua casa no eixo.**
 
-Prumo é uma plataforma de inteligência financeira doméstica em desenvolvimento. Pretende consolidar dados de uma residência e explicar saldos, despesas, orçamento e indicadores com regras rastreáveis. Hoje o repositório contém o bootstrap técnico, a API com login privado e sessões revogáveis, PostgreSQL local e testes. A web ainda não tem formulário de login nem fluxos financeiros.
+Prumo é uma plataforma de inteligência financeira doméstica em desenvolvimento. Pretende consolidar dados de uma residência e explicar saldos, despesas, orçamento e indicadores com regras rastreáveis. Hoje o repositório contém o bootstrap técnico e uma API local com login privado, households, contas, receita manual, movimentos e saldo diário, com testes no PostgreSQL. A web ainda não tem formulário de login nem telas financeiras.
 
 Leia o [Guia da aplicação](docs/application/GUIA_DA_APLICACAO.md) para propósito, tecnologias, regras aprovadas, estado de implementação, execução local e verificações. O [Plano de desenvolvimento](docs/planning/PLANO_DE_DESENVOLVIMENTO.md) mostra o andamento e a próxima ação.
 

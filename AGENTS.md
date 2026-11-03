@@ -4,7 +4,7 @@
 
 - Este diretório (`/home/vinicius/workspace/prumo/`) é a raiz do monorepo; `/home/vinicius/workspace/` pode conter outros projetos. `prumo-web/` e `prumo-api/` são diretórios internos, sem repositórios Git próprios. Execute comandos de cada aplicação no respectivo diretório.
 - Prumo é uma plataforma de inteligência financeira doméstica. Leia apenas as seções relevantes de `PLANO_MESTRE_GESTAO_FINANCEIRA_DOMESTICA.md`, `PLANO_DE_ESTUDOS_APLICADO.md` e `CADERNO_DE_ESTUDOS_APLICADO.md` antes de propor mudanças de produto, domínio ou arquitetura.
-- O Plano Mestre orienta produto e domínio; ADRs registram decisões arquiteturais; código e testes descrevem o comportamento implementado. Trate itens marcados `HIPÓTESE` ou `NÃO DEFINIDO` como pendentes, inclusive a stack.
+- O Plano Mestre orienta produto e domínio; ADRs registram decisões arquiteturais; código e testes descrevem o comportamento implementado. Trate itens marcados `HIPÓTESE` ou `NÃO DEFINIDO` como pendentes; a stack base já foi decidida na ADR-030, mas opções específicas ainda podem estar abertas.
 
 ## Trabalho
 

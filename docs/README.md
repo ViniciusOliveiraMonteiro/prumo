@@ -1,11 +1,11 @@
 # Documentação do Prumo
 
-Comece pelo [Guia da aplicação](application/GUIA_DA_APLICACAO.md): propósito, estado atual, tecnologias, regras aprovadas e execução local. O [quadro de desenvolvimento](planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-3--bootstrap-de-engenharia) mostra o gate da sprint em andamento.
+Comece pelo [Guia da aplicação](application/GUIA_DA_APLICACAO.md): propósito, estado atual, tecnologias, regras aprovadas e execução local. O [quadro de desenvolvimento](planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-5--contas-e-transações) mostra o gate da sprint em andamento.
 
 | Pasta | Conteúdo | Entrada recomendada |
 |---|---|---|
 | [`application/`](application/) | Visão da aplicação e referências por assunto. | [Guia da aplicação](application/GUIA_DA_APLICACAO.md#referências-por-assunto) |
-| [`planning/`](planning/) | Sprints, aceite e próximas ações. | [Sprint 3](planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-3--bootstrap-de-engenharia) |
+| [`planning/`](planning/) | Sprints, aceite e próximas ações. | [Sprint 5](planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-5--contas-e-transações) |
 | [`operations/`](operations/) | Preparo do ambiente, execução e evidências. | [Bootstrap da Sprint 3](operations/BOOTSTRAP_SPRINT_3.md#criação-e-integração) |
 | [`decisions/`](decisions/) | ADRs aceitas e propostas com alternativas e limites. | [Stack base, ADR-030](decisions/ADR-030-foundation-stack.md#decisão) |
 | [`domain/`](domain/) | Exemplos, glossário e modelos financeiros conceituais. | [Exemplos financeiros](domain/financial-examples.md#1-salário-transferência-e-investimento-dom-001003) |
