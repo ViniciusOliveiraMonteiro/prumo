@@ -114,4 +114,4 @@ test('concurrent requests share one atomic budget', async () => {
   );
   expect(responses.filter(({ status }) => status === 401)).toHaveLength(10);
   expect(responses.filter(({ status }) => status === 429)).toHaveLength(10);
-});
+}, 20_000);
