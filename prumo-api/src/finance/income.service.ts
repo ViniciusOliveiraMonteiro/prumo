@@ -22,7 +22,9 @@ export type IncomeView = IncomeInput & {
   eventId: string;
   movementId: string;
   version: number;
-  type: 'RECEIVED_INCOME';
+  type: 'RECEIVED_INCOME' | 'DIRECT_EXPENSE';
+  categoryId: string | null;
+  movementAmountCents: string;
   state: 'APPLIED' | 'PENDING_PRE_OPENING';
   pendingReason: 'PRE_OPENING' | null;
   dateProvenance: 'MANUAL_USER';
@@ -36,10 +38,12 @@ export type BalanceView = {
   openingBalanceCents: string;
   calculable: boolean;
   balanceCents: string | null;
+  negativeBalance: boolean | null;
 };
 export type MovementPage = { items: IncomeView[]; nextCursor: string | null };
 const projection = sql`v.event_id AS "eventId", v.movement_id AS "movementId", v.version,
-  'RECEIVED_INCOME' AS type, v.account_id AS "accountId", v.amount_cents::text AS "amountCents", v.currency,
+  e.type, v.category_id AS "categoryId", m.amount_cents::text AS "movementAmountCents",
+  v.account_id AS "accountId", v.amount_cents::text AS "amountCents", v.currency,
   v.effective_date::text AS "effectiveDate", v.description, v.state,
   CASE WHEN v.state = 'PENDING_PRE_OPENING' THEN 'PRE_OPENING' ELSE NULL END AS "pendingReason",
   v.date_provenance AS "dateProvenance", to_char(v.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "recordedAt", m.sequence::text AS sequence`;
@@ -164,7 +168,14 @@ export class IncomeService {
         ), 0))::text END AS "balanceCents" FROM finance.accounts a WHERE a.household_id = ${householdId} AND a.id = ${accountId}`);
       if (!result.rows[0])
         throw new NotFoundException('Financial resource not found');
-      return result.rows[0];
+      const balance = result.rows[0];
+      return {
+        ...balance,
+        negativeBalance:
+          balance.balanceCents === null
+            ? null
+            : BigInt(balance.balanceCents) < 0n,
+      };
     });
   }
 

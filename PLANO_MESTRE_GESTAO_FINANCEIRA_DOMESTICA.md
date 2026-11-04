@@ -125,7 +125,7 @@ Quando uma decisão mudar, o documento e o ADR correspondente devem ser atualiza
 | Saldo de conta | DEFINIDO para o núcleo | Marco inicial datado e saldo posterior derivado; reconciliação mostra diferenças; ver ADR-016. |
 | Cartão no relatório principal | DEFINIDO para compras de consumo | Despesa integral na data da compra; atribuição automática ao ciclo pelo fechamento configurado, corrigível sem alterar o mês da despesa; pagamento parcial admitido no MVP; ver ADR-008. |
 | Transaction/transferência | DEFINIDO para o núcleo | `Transaction` é evento do household; transferência interna tem dois movimentos vinculados, opostos e atômicos; ver ADR-007. |
-| Receita/despesa comum e passivo do cartão | DEFINIDO para o núcleo | Classificação econômica pelo evento; receita recebida entra no mês em que o dinheiro chega; despesa de consumo paga diretamente entra no mês em que o dinheiro sai da conta; obrigação própria do cartão vinculada aos eventos; ver ADR-017. A receita manual tem estrutura local na ADR-047; operações não liquidadas, despesa e cartão ainda exigem estrutura própria. |
+| Receita/despesa comum e passivo do cartão | DEFINIDO para o núcleo | Classificação econômica pelo evento; receita recebida entra no mês em que o dinheiro chega; despesa de consumo paga diretamente entra no mês em que o dinheiro sai da conta; obrigação própria do cartão vinculada aos eventos; ver ADR-017. A receita manual tem estrutura local na ADR-047; a primeira despesa e categoria mínima foram implementadas localmente pela ADR-048. Operações não liquidadas e cartão ainda exigem estrutura própria. |
 | Cache | NÃO DEFINIDO | Redis apenas quando existir caso real. |
 | Jobs | HIPÓTESE | BullMQ + Redis para imports, recalculações e tarefas assíncronas. |
 | Event streaming | NÃO DEFINIDO | Kafka não entra inicialmente; avaliar somente mediante lacuna concreta. |
@@ -334,13 +334,15 @@ Origem ou destino financeiro: conta corrente, poupança, carteira, dinheiro, con
 
 ### Transaction
 
-Evento financeiro registrado para um household. Seus efeitos sobre saldos de contas ficam em movimentos vinculados; para transferência interna são exatamente dois movimentos opostos, conforme ADR-007. Receita/despesa comum é classificada pelo evento, e a obrigação do cartão é própria e vinculada aos eventos (ADR-017). A ADR-047 implementa localmente evento, versão e movimento para receita manual; a estrutura dos demais eventos permanece pendente.
+Evento financeiro registrado para um household. Seus efeitos sobre saldos de contas ficam em movimentos vinculados; para transferência interna são exatamente dois movimentos opostos, conforme ADR-007. Receita/despesa comum é classificada pelo evento, e a obrigação do cartão é própria e vinculada aos eventos (ADR-017). As ADRs 047/048 implementam localmente evento, versão e movimento para receita manual e despesa direta. Transferência e demais eventos permanecem pendentes.
 
 ### Expense
 
 Saída econômica atribuível ao household.
 
 **DEFINIDO para consumo pago diretamente por conta:** entra no relatório principal no mês em que o dinheiro sai da conta, mesmo que a compra tenha ocorrido no mês anterior (ADR-017). Compra de consumo no cartão segue a data da compra (ADR-008); seu pagamento não gera segunda despesa.
+
+**Primeiro registro manual implementado localmente:** a [ADR-048](docs/decisions/ADR-048-first-manual-expense-proposal.md#implementação-local-em-2026-11-03) aceita categoria mínima pertencente ao household, evento de despesa paga diretamente e movimento negativo vinculado. Débito alegado antes do marco permanece pendente e consultável, sem efeito no saldo nem reconhecimento de despesa até revisão do marco. A consulta por dia marca saldo negativo, inclusive histórico; não oferece ainda correção de categoria, reembolso, compra sem débito confirmado ou relatório mensal público.
 
 ### Income
 

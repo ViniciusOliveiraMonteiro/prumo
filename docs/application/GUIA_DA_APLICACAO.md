@@ -1,8 +1,10 @@
 # Guia da aplicação
 
-**Estado em 2026-11-03:** Prumo mantém o bootstrap privado: a web mostra página inicial e `/conta` com a identidade da sessão; a API oferece identidade, household e convite privado. O ciclo de e-mail verificado tem captura apenas em testes e retorna `503` no runtime normal. O primeiro recurso de conta com marco inicial foi implementado e passou em E2E no PostgreSQL local; a revisão independente e os checks finais constam na [ADR-046](../decisions/ADR-046-first-financial-account-proposal.md#implementação-local-em-2026-11-03). Ainda não há formulário de login nem tela financeira na web, envio ou aceite por e-mail, nem indicadores financeiros utilizáveis; a API local já oferece receita manual, movimentos e saldo diário.
+**Estado em 2026-11-03:** Prumo mantém o bootstrap privado: a web mostra página inicial e `/conta` com a identidade da sessão; a API oferece identidade, household e convite privado. O ciclo de e-mail verificado tem captura apenas em testes e retorna `503` no runtime normal. O primeiro recurso de conta com marco inicial foi implementado e passou em E2E no PostgreSQL local; a revisão independente e os checks finais constam na [ADR-046](../decisions/ADR-046-first-financial-account-proposal.md#implementação-local-em-2026-11-03). Ainda não há formulário de login nem tela financeira na web, envio ou aceite por e-mail, nem indicadores financeiros utilizáveis; a API local já oferece receita manual, despesa direta, categorias mínimas, movimentos e saldo diário. O recorte da despesa passou nos testes e revisão locais da [ADR-048](../decisions/ADR-048-first-manual-expense-proposal.md#implementação-local-em-2026-11-03).
 
 A [ADR-047](../decisions/ADR-047-first-manual-income-and-balance-proposal.md#decisão-delimitada) aprovou o primeiro recorte de receita manual, movimento aplicado ou pendente antes do marco e saldo diário exato. A migração e as rotas locais foram implementadas; o E2E financeiro e o contrato gerado passaram. A revisão independente foi concluída; a lacuna de teste de rollback foi corrigida e revisada novamente.
+
+A [ADR-048](../decisions/ADR-048-first-manual-expense-proposal.md#implementação-local-em-2026-11-03) aprovou categoria mínima por household e despesa paga diretamente. Migrações, rotas locais e contrato foram criados; 17 E2E de despesa e regressão da receita passaram no PostgreSQL local. A revisão independente encontrou duas lacunas materiais, corrigidas e relidas sem novo defeito material. RLS nas tabelas reais e uso externo continuam pendentes.
 
 ## Propósito
 
@@ -13,11 +15,11 @@ Prumo pretende reunir os dados financeiros de uma residência para explicar rece
 | Parte | Responsabilidade atual | Situação |
 |---|---|---|
 | `prumo-web/` | Página inicial Next.js e `/conta` com identidade da sessão; encaminha `/api` e `/api/*` à API local. | Bootstrap funcional, sem formulário de login ou telas financeiras. |
-| `prumo-api/` | Saúde, identidade privada, household, gestão mínima de memberships, convite privado, primeira conta com marco inicial, receita manual, movimentos, saldo diário, proteção de origem e OpenAPI. | Conta, receita manual, movimentos e saldo sob a matriz da ADR-041 validados em E2E local; sem aceite por e-mail. |
-| PostgreSQL local | Migrações de identidade, household, conta e receita manual; laboratório de RLS. | Contém contas, eventos, versões, movimentos e pedidos idempotentes; a decisão final de RLS continua pendente. |
+| `prumo-api/` | Saúde, identidade privada, household, gestão mínima de memberships, convite privado, conta com marco inicial, receita manual, despesa direta, categorias, movimentos, saldo diário, proteção de origem e OpenAPI. | Conta, receita e despesa validadas e revisadas localmente sob a matriz da ADR-041; sem aceite por e-mail. |
+| PostgreSQL local | Migrações de identidade, household, conta, receita manual e primeira despesa; laboratório de RLS. | Contém contas, categorias, eventos, versões, movimentos e pedidos idempotentes; a decisão final de RLS continua pendente. |
 | `contracts/openapi.json` e tipos gerados na web | Contrato HTTP derivado da API. | Contém apenas o contrato implementado; mudanças exigem geração e check. |
 
-O [estado da Sprint 5](../planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-5--contas-e-transações) registra status, critério de aceite e próxima ação dos recortes de conta e receita. A seção [Criação e integração](../operations/BOOTSTRAP_SPRINT_3.md#criação-e-integração) guarda evidências e limites do bootstrap técnico.
+O [estado da Sprint 5](../planning/PLANO_DE_DESENVOLVIMENTO.md#sprint-5--contas-e-transações) registra status, critério de aceite e próxima ação dos recortes financeiros. A seção [Criação e integração](../operations/BOOTSTRAP_SPRINT_3.md#criação-e-integração) guarda evidências e limites do bootstrap técnico.
 
 ## Tecnologias e limites
 

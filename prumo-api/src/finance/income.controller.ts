@@ -48,7 +48,14 @@ class IncomeResponse extends IncomeBody {
   @ApiProperty({ format: 'uuid' }) eventId!: string;
   @ApiProperty({ format: 'uuid' }) movementId!: string;
   @ApiProperty({ enum: [1] }) version!: number;
-  @ApiProperty({ enum: ['RECEIVED_INCOME'] }) type!: string;
+  @ApiProperty({ enum: ['RECEIVED_INCOME', 'DIRECT_EXPENSE'] }) type!: string;
+  @ApiProperty({ type: String, format: 'uuid', nullable: true })
+  categoryId!: string | null;
+  @ApiProperty({
+    type: String,
+    description: 'Signed account movement in cents.',
+  })
+  movementAmountCents!: string;
   @ApiProperty({ enum: ['APPLIED', 'PENDING_PRE_OPENING'] }) state!: string;
   @ApiProperty({ type: String, enum: ['PRE_OPENING'], nullable: true })
   pendingReason!: string | null;
@@ -73,6 +80,13 @@ class BalanceResponse {
       'Exact signed integer cents. Aggregate has no individual-entry limit.',
   })
   balanceCents!: string | null;
+  @ApiProperty({
+    type: Boolean,
+    nullable: true,
+    description:
+      'True when the calculated balance is negative on the requested date; null before the opening date. It is an alert for review, not available bank credit.',
+  })
+  negativeBalance!: boolean | null;
 }
 class MovementPageResponse {
   @ApiProperty({ type: [IncomeResponse] }) items!: IncomeResponse[];

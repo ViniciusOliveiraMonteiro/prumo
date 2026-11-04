@@ -448,6 +448,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/households/{householdId}/expense-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExpenseController_listCategories"];
+        put?: never;
+        post: operations["ExpenseController_createCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transactions/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExpenseController_createExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -614,7 +646,11 @@ export interface components {
             /** @enum {number} */
             version: 1;
             /** @enum {string} */
-            type: "RECEIVED_INCOME";
+            type: "RECEIVED_INCOME" | "DIRECT_EXPENSE";
+            /** Format: uuid */
+            categoryId: string | null;
+            /** @description Signed account movement in cents. */
+            movementAmountCents: string;
             /** @enum {string} */
             state: "APPLIED" | "PENDING_PRE_OPENING";
             /** @enum {string|null} */
@@ -637,11 +673,79 @@ export interface components {
             calculable: boolean;
             /** @description Exact signed integer cents. Aggregate has no individual-entry limit. */
             balanceCents: string | null;
+            /** @description True when the calculated balance is negative on the requested date; null before the opening date. It is an alert for review, not available bank credit. */
+            negativeBalance: boolean | null;
         };
         MovementPageResponse: {
             items: components["schemas"]["IncomeResponse"][];
             /** @description Cursor by effective day and registration sequence. Restart pagination after retroactive insertions for a complete view. */
             nextCursor: string | null;
+        };
+        CategoryBody: {
+            name: string;
+        };
+        CategoryResponse: {
+            name: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            householdId: string;
+            /** Format: uuid */
+            createdByUserId: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ExpenseBody: {
+            /** Format: uuid */
+            accountId: string;
+            /** Format: uuid */
+            categoryId: string;
+            /**
+             * @description Positive integer cents, at most 9007199254740991.
+             * @example 13000
+             */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            effectiveDate: string;
+            description: string;
+        };
+        ExpenseResponse: {
+            /** Format: uuid */
+            accountId: string;
+            /** Format: uuid */
+            categoryId: string;
+            /**
+             * @description Positive integer cents, at most 9007199254740991.
+             * @example 13000
+             */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            effectiveDate: string;
+            description: string;
+            /** Format: uuid */
+            eventId: string;
+            /** Format: uuid */
+            movementId: string;
+            /** @enum {number} */
+            version: 1;
+            /** @enum {string} */
+            type: "DIRECT_EXPENSE";
+            /** @description Negative account movement in cents. */
+            movementAmountCents: string;
+            /** @enum {string} */
+            state: "APPLIED" | "PENDING_PRE_OPENING";
+            /** @enum {string|null} */
+            pendingReason: "PRE_OPENING" | null;
+            /** @enum {string} */
+            dateProvenance: "MANUAL_USER";
+            /** Format: date-time */
+            recordedAt: string;
+            /** @description Persistent registration order, not real-world chronology. */
+            sequence: string;
         };
     };
     responses: never;
@@ -1920,6 +2024,161 @@ export interface operations {
                 content?: never;
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ExpenseController_listCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ExpenseController_createCategory: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID identifying the category creation request. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ExpenseController_createExpense: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID identifying the expense creation request. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

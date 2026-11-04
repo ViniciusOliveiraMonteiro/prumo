@@ -204,6 +204,7 @@ test('applies income on opening day and preserves a pre-opening candidate withou
     openingBalanceCents: '500000',
     calculable: false,
     balanceCents: null,
+    negativeBalance: null,
   });
   const onDay = await balance(
     houses[0],

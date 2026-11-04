@@ -1366,6 +1366,189 @@
           "income"
         ]
       }
+    },
+    "/api/households/{householdId}/expense-categories": {
+      "post": {
+        "operationId": "ExpenseController_createCategory",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID identifying the category creation request.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "expenses"
+        ]
+      },
+      "get": {
+        "operationId": "ExpenseController_listCategories",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "expenses"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transactions/expenses": {
+      "post": {
+        "operationId": "ExpenseController_createExpense",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID identifying the expense creation request.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "expenses"
+        ]
+      }
     }
   },
   "info": {
@@ -1860,8 +2043,18 @@
           "type": {
             "type": "string",
             "enum": [
-              "RECEIVED_INCOME"
+              "RECEIVED_INCOME",
+              "DIRECT_EXPENSE"
             ]
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "movementAmountCents": {
+            "type": "string",
+            "description": "Signed account movement in cents."
           },
           "state": {
             "type": "string",
@@ -1903,6 +2096,8 @@
           "movementId",
           "version",
           "type",
+          "categoryId",
+          "movementAmountCents",
           "state",
           "pendingReason",
           "dateProvenance",
@@ -1937,6 +2132,11 @@
             "type": "string",
             "nullable": true,
             "description": "Exact signed integer cents. Aggregate has no individual-entry limit."
+          },
+          "negativeBalance": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "True when the calculated balance is negative on the requested date; null before the opening date. It is an alert for review, not available bank credit."
           }
         },
         "required": [
@@ -1945,7 +2145,8 @@
           "openingDate",
           "openingBalanceCents",
           "calculable",
-          "balanceCents"
+          "balanceCents",
+          "negativeBalance"
         ]
       },
       "MovementPageResponse": {
@@ -1966,6 +2167,198 @@
         "required": [
           "items",
           "nextCursor"
+        ]
+      },
+      "CategoryBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "householdId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "householdId",
+          "createdByUserId",
+          "createdAt"
+        ]
+      },
+      "ExpenseBody": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "example": "13000",
+            "description": "Positive integer cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "required": [
+          "accountId",
+          "categoryId",
+          "amountCents",
+          "currency",
+          "effectiveDate",
+          "description"
+        ]
+      },
+      "ExpenseResponse": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "example": "13000",
+            "description": "Positive integer cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "movementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "DIRECT_EXPENSE"
+            ]
+          },
+          "movementAmountCents": {
+            "type": "string",
+            "description": "Negative account movement in cents."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "PENDING_PRE_OPENING"
+            ]
+          },
+          "pendingReason": {
+            "type": "string",
+            "enum": [
+              "PRE_OPENING"
+            ],
+            "nullable": true
+          },
+          "dateProvenance": {
+            "type": "string",
+            "enum": [
+              "MANUAL_USER"
+            ]
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sequence": {
+            "type": "string",
+            "description": "Persistent registration order, not real-world chronology."
+          }
+        },
+        "required": [
+          "accountId",
+          "categoryId",
+          "amountCents",
+          "currency",
+          "effectiveDate",
+          "description",
+          "eventId",
+          "movementId",
+          "version",
+          "type",
+          "movementAmountCents",
+          "state",
+          "pendingReason",
+          "dateProvenance",
+          "recordedAt",
+          "sequence"
         ]
       }
     }

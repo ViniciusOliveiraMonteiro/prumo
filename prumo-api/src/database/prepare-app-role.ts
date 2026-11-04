@@ -91,6 +91,9 @@ try {
     'GRANT SELECT, INSERT ON finance.events, finance.event_versions, finance.movements, finance.income_requests TO prumo_app',
   );
   await pool.query(
+    'GRANT SELECT, INSERT ON finance.expense_categories, finance.category_requests, finance.expense_requests TO prumo_app',
+  );
+  await pool.query(
     'GRANT USAGE ON SEQUENCE finance.movements_sequence_seq TO prumo_app',
   );
   process.stdout.write('Local application role is ready.\n');
