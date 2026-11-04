@@ -48,6 +48,9 @@ class AccountBody {
 class AccountResponse extends AccountBody {
   @ApiProperty({ format: 'uuid' })
   id!: string;
+
+  @ApiProperty({ example: 1 })
+  openingVersion!: number;
 }
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

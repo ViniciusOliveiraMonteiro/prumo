@@ -145,7 +145,11 @@ test('creates once under concurrent retries and scopes reads to the selected hou
     expect(response.headers['cache-control']).toBe('no-store');
   }
   const accountId = results[0].body.id as string;
-  expect(results[0].body).toEqual({ id: accountId, ...accountBody });
+  expect(results[0].body).toEqual({
+    id: accountId,
+    openingVersion: 1,
+    ...accountBody,
+  });
   const count = await admin.query<{ count: string }>(
     'SELECT count(*) FROM finance.accounts WHERE household_id = $1',
     [households[0]],

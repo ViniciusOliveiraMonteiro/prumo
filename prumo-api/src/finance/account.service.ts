@@ -16,7 +16,7 @@ export type AccountInput = {
   openingBalanceCents: string;
 };
 
-export type AccountView = AccountInput & { id: string };
+export type AccountView = AccountInput & { id: string; openingVersion: number };
 type FinanceAction = 'finance:read' | 'finance:write';
 type FinanceContext = {
   userId: string;
@@ -59,11 +59,11 @@ export class AccountService {
         const prior = await tx.execute<{
           actorUserId: string;
           samePayload: boolean;
-          accountId: string;
+          response: AccountView;
         }>(sql`
         SELECT actor_user_id AS "actorUserId",
                request_payload = ${JSON.stringify(input)}::jsonb AS "samePayload",
-               account_id AS "accountId"
+               response
         FROM finance.account_requests
         WHERE household_id = ${context.householdId}
           AND operation = 'account:create' AND request_key = ${requestKey}
@@ -75,16 +75,7 @@ export class AccountService {
           ) {
             throw new ConflictException('Idempotency key already used');
           }
-          const existing = await tx.execute<AccountView>(sql`
-          SELECT id, name, currency, opening_date AS "openingDate",
-                 opening_balance_cents::text AS "openingBalanceCents"
-          FROM finance.accounts
-          WHERE household_id = ${context.householdId}
-            AND id = ${prior.rows[0].accountId}
-        `);
-          if (!existing.rows[0])
-            throw new Error('Idempotency result is missing its account');
-          return existing.rows[0];
+          return prior.rows[0].response;
         }
 
         const created = await tx.execute<AccountView>(sql`
@@ -96,17 +87,18 @@ export class AccountService {
           ${input.currency}, ${input.openingDate}::date,
           ${input.openingBalanceCents}::bigint
         )
-        RETURNING id, name, currency, opening_date AS "openingDate",
+        RETURNING id, name, currency, opening_version AS "openingVersion", opening_date AS "openingDate",
                   opening_balance_cents::text AS "openingBalanceCents"
       `);
         const account = created.rows[0];
         await tx.execute(sql`
         INSERT INTO finance.account_requests (
           household_id, operation, request_key, actor_user_id,
-          request_payload, account_id
+          request_payload, account_id, response
         ) VALUES (
           ${context.householdId}, 'account:create', ${requestKey},
-          ${context.userId}, ${JSON.stringify(input)}::jsonb, ${account.id}
+          ${context.userId}, ${JSON.stringify(input)}::jsonb, ${account.id},
+          ${JSON.stringify(account)}::jsonb
         )
       `);
         return account;
@@ -118,7 +110,7 @@ export class AccountService {
     return this.withSafeDatabaseErrors(async () => {
       const context = await this.readContext(userId, householdId);
       const result = await this.database.db.execute<AccountView>(sql`
-        SELECT id, name, currency, opening_date AS "openingDate",
+        SELECT id, name, currency, opening_version AS "openingVersion", opening_date AS "openingDate",
                opening_balance_cents::text AS "openingBalanceCents"
         FROM finance.accounts
         WHERE household_id = ${context.householdId}
@@ -136,7 +128,7 @@ export class AccountService {
     return this.withSafeDatabaseErrors(async () => {
       const context = await this.readContext(userId, householdId);
       const result = await this.database.db.execute<AccountView>(sql`
-        SELECT id, name, currency, opening_date AS "openingDate",
+        SELECT id, name, currency, opening_version AS "openingVersion", opening_date AS "openingDate",
                opening_balance_cents::text AS "openingBalanceCents"
         FROM finance.accounts
         WHERE household_id = ${context.householdId} AND id = ${accountId}

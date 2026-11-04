@@ -22,7 +22,7 @@ export type IncomeView = IncomeInput & {
   eventId: string;
   movementId: string;
   version: number;
-  type: 'RECEIVED_INCOME' | 'DIRECT_EXPENSE';
+  type: 'RECEIVED_INCOME' | 'DIRECT_EXPENSE' | 'INTERNAL_TRANSFER';
   categoryId: string | null;
   movementAmountCents: string;
   state: 'APPLIED' | 'PENDING_PRE_OPENING';
@@ -41,11 +41,11 @@ export type BalanceView = {
   negativeBalance: boolean | null;
 };
 export type MovementPage = { items: IncomeView[]; nextCursor: string | null };
-const projection = sql`v.event_id AS "eventId", v.movement_id AS "movementId", v.version,
+const projection = sql`v.event_id AS "eventId", m.id AS "movementId", v.version,
   e.type, v.category_id AS "categoryId", m.amount_cents::text AS "movementAmountCents",
-  v.account_id AS "accountId", v.amount_cents::text AS "amountCents", v.currency,
-  v.effective_date::text AS "effectiveDate", v.description, v.state,
-  CASE WHEN v.state = 'PENDING_PRE_OPENING' THEN 'PRE_OPENING' ELSE NULL END AS "pendingReason",
+  m.account_id AS "accountId", v.amount_cents::text AS "amountCents", v.currency,
+  m.effective_date::text AS "effectiveDate", v.description, m.state,
+  CASE WHEN m.state = 'PENDING_PRE_OPENING' THEN 'PRE_OPENING' ELSE NULL END AS "pendingReason",
   v.date_provenance AS "dateProvenance", to_char(v.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "recordedAt", m.sequence::text AS sequence`;
 
 @Injectable()
@@ -135,7 +135,7 @@ export class IncomeService {
     eventId: string,
   ): Promise<IncomeView> {
     const result = await tx.execute<IncomeView>(
-      sql`SELECT ${projection} FROM finance.events e JOIN finance.event_versions v ON (v.household_id, v.event_id, v.version) = (e.household_id, e.id, e.current_version) JOIN finance.movements m ON (m.household_id, m.id, m.version) = (v.household_id, v.movement_id, v.version) WHERE e.household_id = ${householdId} AND e.id = ${eventId}`,
+      sql`SELECT ${projection} FROM finance.events e JOIN finance.event_versions v ON (v.household_id, v.event_id, v.version) = (e.household_id, e.id, e.current_version) JOIN finance.movements m ON (m.household_id, m.id, m.version) = (v.household_id, v.movement_id, v.version) WHERE e.household_id = ${householdId} AND e.id = ${eventId} AND e.type <> 'INTERNAL_TRANSFER'`,
     );
     if (!result.rows[0])
       throw new NotFoundException('Financial resource not found');

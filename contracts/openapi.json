@@ -1549,6 +1549,344 @@
           "expenses"
         ]
       }
+    },
+    "/api/households/{householdId}/transactions/transfers": {
+      "post": {
+        "operationId": "TransferController_create",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID identifying the transfer creation request.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "transfers"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transactions/transfers/{eventId}": {
+      "get": {
+        "operationId": "TransferController_get",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "transfers"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transfers/in-transit": {
+      "get": {
+        "operationId": "TransferController_inTransit",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InTransitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "transfers"
+        ]
+      }
+    },
+    "/api/households/{householdId}/accounts/{accountId}/opening-balance-revisions": {
+      "post": {
+        "operationId": "OpeningBalanceRevisionController_revise",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID identifying this revision request.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      },
+      "get": {
+        "operationId": "OpeningBalanceRevisionController_list",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "afterVersion",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      }
     }
   },
   "info": {
@@ -1951,6 +2289,10 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "openingVersion": {
+            "type": "number",
+            "example": 1
           }
         },
         "required": [
@@ -1958,7 +2300,8 @@
           "currency",
           "openingDate",
           "openingBalanceCents",
-          "id"
+          "id",
+          "openingVersion"
         ]
       },
       "IncomeBody": {
@@ -2044,7 +2387,8 @@
             "type": "string",
             "enum": [
               "RECEIVED_INCOME",
-              "DIRECT_EXPENSE"
+              "DIRECT_EXPENSE",
+              "INTERNAL_TRANSFER"
             ]
           },
           "categoryId": {
@@ -2359,6 +2703,306 @@
           "dateProvenance",
           "recordedAt",
           "sequence"
+        ]
+      },
+      "TransferBody": {
+        "type": "object",
+        "properties": {
+          "sourceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Positive integer cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "sourceEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "destinationEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "required": [
+          "sourceAccountId",
+          "destinationAccountId",
+          "amountCents",
+          "currency",
+          "sourceEffectiveDate",
+          "destinationEffectiveDate",
+          "description"
+        ]
+      },
+      "TransferResponse": {
+        "type": "object",
+        "properties": {
+          "sourceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Positive integer cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "sourceEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "destinationEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INTERNAL_TRANSFER"
+            ]
+          },
+          "sourceMovementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationMovementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceMovementAmountCents": {
+            "type": "string",
+            "description": "Signed negative integer cents."
+          },
+          "destinationMovementAmountCents": {
+            "type": "string",
+            "description": "Signed positive integer cents."
+          },
+          "sourceDateProvenance": {
+            "type": "string",
+            "enum": [
+              "MANUAL_USER"
+            ]
+          },
+          "destinationDateProvenance": {
+            "type": "string",
+            "enum": [
+              "MANUAL_USER"
+            ]
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sourceAccountId",
+          "destinationAccountId",
+          "amountCents",
+          "currency",
+          "sourceEffectiveDate",
+          "destinationEffectiveDate",
+          "description",
+          "eventId",
+          "version",
+          "type",
+          "sourceMovementId",
+          "destinationMovementId",
+          "sourceMovementAmountCents",
+          "destinationMovementAmountCents",
+          "sourceDateProvenance",
+          "destinationDateProvenance",
+          "recordedAt"
+        ]
+      },
+      "InTransitItem": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "description": "Positive integer cents."
+          }
+        },
+        "required": [
+          "eventId",
+          "amountCents"
+        ]
+      },
+      "InTransitResponse": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "totalCents": {
+            "type": "string",
+            "description": "Exact aggregate integer cents."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InTransitItem"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cursor by source day and event ID."
+          }
+        },
+        "required": [
+          "date",
+          "currency",
+          "totalCents",
+          "items",
+          "nextCursor"
+        ]
+      },
+      "RevisionBody": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "openingBalanceCents": {
+            "type": "string",
+            "example": "499000",
+            "description": "Signed integer cents as a decimal string."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "openingBalanceCents",
+          "reason"
+        ]
+      },
+      "RevisionResponse": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "example": 2
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "previousBalanceCents": {
+            "type": "object",
+            "nullable": true
+          },
+          "openingBalanceCents": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "revisionId",
+          "accountId",
+          "version",
+          "openingDate",
+          "previousBalanceCents",
+          "openingBalanceCents",
+          "reason",
+          "actorUserId",
+          "revisedAt"
+        ]
+      },
+      "RevisionPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RevisionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
         ]
       }
     }

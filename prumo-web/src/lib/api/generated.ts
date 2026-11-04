@@ -480,6 +480,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/households/{householdId}/transactions/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TransferController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transactions/transfers/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransferController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transfers/in-transit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransferController_inTransit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/accounts/{accountId}/opening-balance-revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OpeningBalanceRevisionController_list"];
+        put?: never;
+        post: operations["OpeningBalanceRevisionController_revise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -611,6 +675,8 @@ export interface components {
             openingBalanceCents: string;
             /** Format: uuid */
             id: string;
+            /** @example 1 */
+            openingVersion: number;
         };
         IncomeBody: {
             /** Format: uuid */
@@ -646,7 +712,7 @@ export interface components {
             /** @enum {number} */
             version: 1;
             /** @enum {string} */
-            type: "RECEIVED_INCOME" | "DIRECT_EXPENSE";
+            type: "RECEIVED_INCOME" | "DIRECT_EXPENSE" | "INTERNAL_TRANSFER";
             /** Format: uuid */
             categoryId: string | null;
             /** @description Signed account movement in cents. */
@@ -746,6 +812,104 @@ export interface components {
             recordedAt: string;
             /** @description Persistent registration order, not real-world chronology. */
             sequence: string;
+        };
+        TransferBody: {
+            /** Format: uuid */
+            sourceAccountId: string;
+            /** Format: uuid */
+            destinationAccountId: string;
+            /** @description Positive integer cents, at most 9007199254740991. */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            sourceEffectiveDate: string;
+            /** Format: date */
+            destinationEffectiveDate: string;
+            description: string;
+        };
+        TransferResponse: {
+            /** Format: uuid */
+            sourceAccountId: string;
+            /** Format: uuid */
+            destinationAccountId: string;
+            /** @description Positive integer cents, at most 9007199254740991. */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            sourceEffectiveDate: string;
+            /** Format: date */
+            destinationEffectiveDate: string;
+            description: string;
+            /** Format: uuid */
+            eventId: string;
+            /** @enum {number} */
+            version: 1;
+            /** @enum {string} */
+            type: "INTERNAL_TRANSFER";
+            /** Format: uuid */
+            sourceMovementId: string;
+            /** Format: uuid */
+            destinationMovementId: string;
+            /** @description Signed negative integer cents. */
+            sourceMovementAmountCents: string;
+            /** @description Signed positive integer cents. */
+            destinationMovementAmountCents: string;
+            /** @enum {string} */
+            sourceDateProvenance: "MANUAL_USER";
+            /** @enum {string} */
+            destinationDateProvenance: "MANUAL_USER";
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        InTransitItem: {
+            /** Format: uuid */
+            eventId: string;
+            /** @description Positive integer cents. */
+            amountCents: string;
+        };
+        InTransitResponse: {
+            /** Format: date */
+            date: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** @description Exact aggregate integer cents. */
+            totalCents: string;
+            items: components["schemas"]["InTransitItem"][];
+            /** @description Cursor by source day and event ID. */
+            nextCursor: string | null;
+        };
+        RevisionBody: {
+            /** @example 1 */
+            expectedVersion: number;
+            /**
+             * @description Signed integer cents as a decimal string.
+             * @example 499000
+             */
+            openingBalanceCents: string;
+            reason: string;
+        };
+        RevisionResponse: {
+            /** Format: uuid */
+            revisionId: Record<string, never> | null;
+            /** Format: uuid */
+            accountId: string;
+            /** @example 2 */
+            version: number;
+            /** Format: date */
+            openingDate: string;
+            previousBalanceCents: Record<string, never> | null;
+            openingBalanceCents: string;
+            reason: Record<string, never> | null;
+            /** Format: uuid */
+            actorUserId: string;
+            /** Format: date-time */
+            revisedAt: string;
+        };
+        RevisionPageResponse: {
+            items: components["schemas"]["RevisionResponse"][];
+            nextCursor: number | null;
         };
     };
     responses: never;
@@ -2152,6 +2316,249 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExpenseResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TransferController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID identifying the transfer creation request. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TransferController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TransferController_inTransit: {
+        parameters: {
+            query: {
+                date: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InTransitResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OpeningBalanceRevisionController_list: {
+        parameters: {
+            query?: {
+                afterVersion?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                householdId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionPageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OpeningBalanceRevisionController_revise: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID identifying this revision request. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionResponse"];
                 };
             };
             400: {
