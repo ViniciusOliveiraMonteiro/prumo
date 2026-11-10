@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
         source: "/conta",
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
+      {
+        source: "/financas",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
     ];
   },
   async rewrites() {

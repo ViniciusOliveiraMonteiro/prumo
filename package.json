@@ -11,7 +11,7 @@
     "dev:web": "pnpm --filter prumo-web dev",
     "dev:api": "pnpm --filter prumo-api start:dev",
     "lint": "pnpm -r lint",
-    "format:check": "prettier --check \"prumo-api/src/**/*.ts\" \"prumo-api/test/**/*.ts\" \"prumo-web/src/**/*.{ts,tsx,css}\" \"prumo-web/next.config.ts\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"prumo-api/src/**/*.ts\" \"prumo-api/test/**/*.ts\" \"prumo-web/src/**/*.{ts,tsx,css}\" \"prumo-web/test/**/*.mjs\" \"prumo-web/next.config.ts\" \"scripts/**/*.mjs\"",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm -r build",

@@ -38,3 +38,116 @@ p {
   margin: 0;
   font-size: 1.2rem;
 }
+
+.finance-page {
+  box-sizing: border-box;
+  max-width: 72rem;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 5vw, 4rem);
+}
+
+.finance-page h1 {
+  margin: 0.5rem 0 1.5rem;
+}
+
+.finance-page h2 {
+  margin: 2rem 0 1rem;
+  font-size: 1.5rem;
+}
+
+.finance-header,
+.account-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.finance-page a {
+  color: inherit;
+}
+
+.household-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.household-list a {
+  border: 1px solid #b6c8bd;
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  text-decoration: none;
+}
+
+.household-list a[aria-current="page"] {
+  background: #18352c;
+  color: white;
+}
+
+.date-form,
+.sign-in-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.date-form {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sign-in-form {
+  flex-direction: column;
+  width: min(100%, 25rem);
+  margin-top: 2rem;
+}
+
+.finance-page input,
+.finance-page button {
+  box-sizing: border-box;
+  border: 1px solid #a5b9ad;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.finance-page button {
+  background: #18352c;
+  color: white;
+  cursor: pointer;
+}
+
+.finance-page button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sign-in-form input {
+  width: 100%;
+}
+
+.account-list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+.account-list li {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid #cbd8ce;
+}
+
+.account-list small {
+  display: block;
+  margin-top: 0.3rem;
+}
+
+@media (max-width: 40rem) {
+  .finance-header,
+  .account-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

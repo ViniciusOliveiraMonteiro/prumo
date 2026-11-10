@@ -48,3 +48,4 @@ jobs:
       - run: pnpm --filter prumo-api test:db
       - run: pnpm contract:check
       - run: pnpm build
+      - run: pnpm --filter prumo-web test:integration
