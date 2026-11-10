@@ -51,7 +51,7 @@ A API local implementa criação da saída, vínculo da chegada, detalhe antes/d
 
 Os **63 E2E financeiros em sete arquivos** passaram juntos, incluindo **11 casos da ADR-052**: débito único, saldo, trânsito histórico, chegada pré-marco, revisão posterior, retries e concorrência, autorização A/B, revogação, rollback, SQL direto e as duas ordens de lock entre vínculo e marco. A suíte de banco passou com **37/37** após a migração final. Typecheck das duas aplicações, lint da API, `contract:check`, formatação direcionada e `git diff --check` passaram localmente.
 
-A revisão independente encontrou uma FK reversa sem `event_id` e tipos HTTP que não incluíam a versão 2 e a saída em revisão. As correções, o teste SQL negativo, a corrida inversa e o percurso do cursor foram relidos sem defeito material remanescente. A validação não cobre CI desta mudança, policies de RLS nas tabelas reais, staging ou uso externo.
+A revisão independente encontrou uma FK reversa sem `event_id` e tipos HTTP que não incluíam a versão 2 e a saída em revisão. As correções, o teste SQL negativo, a corrida inversa e o percurso do cursor foram relidos sem defeito material remanescente. Em 2026-11-10, o [run 28 da CI](https://github.com/ViniciusOliveiraMonteiro/prumo/actions/runs/42834093677) passou no commit `b1125a1`, com migrações, grants, E2E, testes de banco, contrato e build. A validação não cobre policies de RLS nas tabelas reais, staging ou uso externo.
 
 ## Fora do recorte e pendências
 
