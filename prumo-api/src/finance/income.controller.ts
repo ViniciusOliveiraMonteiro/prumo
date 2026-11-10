@@ -47,9 +47,14 @@ class IncomeBody {
 class IncomeResponse extends IncomeBody {
   @ApiProperty({ format: 'uuid' }) eventId!: string;
   @ApiProperty({ format: 'uuid' }) movementId!: string;
-  @ApiProperty({ enum: [1] }) version!: number;
+  @ApiProperty({ enum: [1, 2] }) version!: number;
   @ApiProperty({
-    enum: ['RECEIVED_INCOME', 'DIRECT_EXPENSE', 'INTERNAL_TRANSFER'],
+    enum: [
+      'RECEIVED_INCOME',
+      'DIRECT_EXPENSE',
+      'INTERNAL_TRANSFER',
+      'UNCLASSIFIED_OUTFLOW',
+    ],
   })
   type!: string;
   @ApiProperty({ type: String, format: 'uuid', nullable: true })

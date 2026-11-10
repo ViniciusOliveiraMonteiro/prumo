@@ -949,6 +949,239 @@
         ]
       }
     },
+    "/api/households/{householdId}/transactions/unclassified-outflows": {
+      "post": {
+        "operationId": "OutflowController_create",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutflowBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutflowResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "unclassified-outflows"
+        ]
+      },
+      "get": {
+        "operationId": "OutflowController_list",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutflowPage"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "unclassified-outflows"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transactions/unclassified-outflows/{eventId}/arrival-links": {
+      "post": {
+        "operationId": "OutflowController_link",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrivalBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutflowResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "unclassified-outflows"
+        ]
+      }
+    },
+    "/api/households/{householdId}/transactions/unclassified-outflows/{eventId}": {
+      "get": {
+        "operationId": "OutflowController_get",
+        "parameters": [
+          {
+            "name": "householdId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutflowResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "__Host-sid": []
+          }
+        ],
+        "tags": [
+          "unclassified-outflows"
+        ]
+      }
+    },
     "/api/households/{householdId}/accounts": {
       "post": {
         "operationId": "AccountController_create",
@@ -2230,6 +2463,273 @@
           "expiresAt"
         ]
       },
+      "OutflowBody": {
+        "type": "object",
+        "properties": {
+          "sourceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Positive BRL cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "sourceEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "required": [
+          "sourceAccountId",
+          "amountCents",
+          "currency",
+          "sourceEffectiveDate",
+          "description"
+        ]
+      },
+      "ResolutionResponse": {
+        "type": "object",
+        "properties": {
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previousVersion": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          }
+        },
+        "required": [
+          "actorUserId",
+          "reason",
+          "recordedAt",
+          "previousVersion"
+        ]
+      },
+      "OutflowResponse": {
+        "type": "object",
+        "properties": {
+          "sourceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountCents": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Positive BRL cents, at most 9007199254740991."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "sourceEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "UNCLASSIFIED_OUTFLOW",
+              "INTERNAL_TRANSFER"
+            ]
+          },
+          "sourceMovementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceMovementAmountCents": {
+            "type": "string"
+          },
+          "sourceState": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "PENDING_PRE_OPENING"
+            ]
+          },
+          "sourceDateProvenance": {
+            "type": "string",
+            "enum": [
+              "MANUAL_USER"
+            ]
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "destinationMovementId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "destinationEffectiveDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "destinationState": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "APPLIED",
+              "PENDING_PRE_OPENING"
+            ]
+          },
+          "destinationMovementAmountCents": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolutionResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sourceAccountId",
+          "amountCents",
+          "currency",
+          "sourceEffectiveDate",
+          "description",
+          "eventId",
+          "version",
+          "type",
+          "sourceMovementId",
+          "sourceMovementAmountCents",
+          "sourceState",
+          "sourceDateProvenance",
+          "recordedAt",
+          "recordedByUserId",
+          "destinationAccountId",
+          "destinationMovementId",
+          "destinationEffectiveDate",
+          "destinationState",
+          "destinationMovementAmountCents",
+          "resolution"
+        ]
+      },
+      "ArrivalBody": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "destinationAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationEffectiveDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "destinationAccountId",
+          "destinationEffectiveDate",
+          "reason"
+        ]
+      },
+      "OutflowPage": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "reviewOutflowCents": {
+            "type": "string",
+            "description": "Exact aggregate of economically unclassified debits, separate from confirmed transit."
+          },
+          "hasUnclassifiedOutflow": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutflowResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "date",
+          "currency",
+          "reviewOutflowCents",
+          "hasUnclassifiedOutflow",
+          "items",
+          "nextCursor"
+        ]
+      },
       "AccountBody": {
         "type": "object",
         "properties": {
@@ -2380,7 +2880,8 @@
           "version": {
             "type": "number",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "type": {
@@ -2388,7 +2889,8 @@
             "enum": [
               "RECEIVED_INCOME",
               "DIRECT_EXPENSE",
-              "INTERNAL_TRANSFER"
+              "INTERNAL_TRANSFER",
+              "UNCLASSIFIED_OUTFLOW"
             ]
           },
           "categoryId": {
@@ -2793,7 +3295,8 @@
           "version": {
             "type": "number",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "type": {
@@ -2833,6 +3336,29 @@
           "recordedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sourceState": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "PENDING_PRE_OPENING"
+            ],
+            "description": "Current inclusion of the source movement; old creation replays may omit it."
+          },
+          "destinationState": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "PENDING_PRE_OPENING"
+            ]
+          },
+          "sourceOpeningDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "destinationOpeningDate": {
+            "type": "string",
+            "format": "date"
           }
         },
         "required": [
@@ -2889,6 +3415,10 @@
             "type": "string",
             "description": "Exact aggregate integer cents."
           },
+          "hasPendingTransferSide": {
+            "type": "boolean",
+            "description": "True if any confirmed transfer with source day at or before this day has a pending side. The factual transit total alone must not be used as a consolidated balance."
+          },
           "items": {
             "type": "array",
             "items": {
@@ -2905,6 +3435,7 @@
           "date",
           "currency",
           "totalCents",
+          "hasPendingTransferSide",
           "items",
           "nextCursor"
         ]
@@ -2921,6 +3452,11 @@
             "type": "string",
             "example": "499000",
             "description": "Signed integer cents as a decimal string."
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Opening day at its start; omitted means the current opening day."
           },
           "reason": {
             "type": "string",
@@ -2953,6 +3489,12 @@
           "openingDate": {
             "type": "string",
             "format": "date"
+          },
+          "previousOpeningDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Previous opening day. Historical replays created before this contract omit it."
           },
           "previousBalanceCents": {
             "type": "object",

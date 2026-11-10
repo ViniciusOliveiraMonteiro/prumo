@@ -32,11 +32,16 @@ export type TransferView = TransferInput & {
   sourceDateProvenance: 'MANUAL_USER';
   destinationDateProvenance: 'MANUAL_USER';
   recordedAt: string;
+  sourceState?: 'APPLIED' | 'PENDING_PRE_OPENING';
+  destinationState?: 'APPLIED' | 'PENDING_PRE_OPENING';
+  sourceOpeningDate?: string;
+  destinationOpeningDate?: string;
 };
 export type InTransitView = {
   date: string;
   currency: 'BRL';
   totalCents: string;
+  hasPendingTransferSide: boolean;
   items: { eventId: string; amountCents: string }[];
   nextCursor: string | null;
 };
@@ -68,19 +73,6 @@ export class TransferService {
     }
   }
 
-  private async account(
-    tx: Tx,
-    householdId: string,
-    id: string,
-  ): Promise<string> {
-    const result = await tx.execute<{ openingDate: string }>(
-      sql`SELECT opening_date::text AS "openingDate" FROM finance.accounts WHERE household_id = ${householdId} AND id = ${id}`,
-    );
-    if (!result.rows[0])
-      throw new NotFoundException('Financial resource not found');
-    return result.rows[0].openingDate;
-  }
-
   create(
     userId: string,
     householdId: string,
@@ -88,21 +80,6 @@ export class TransferService {
     input: TransferInput,
   ): Promise<TransferView> {
     return this.authorized(userId, householdId, true, async (tx) => {
-      const sourceOpening = await this.account(
-        tx,
-        householdId,
-        input.sourceAccountId,
-      );
-      const destinationOpening = await this.account(
-        tx,
-        householdId,
-        input.destinationAccountId,
-      );
-      if (
-        input.sourceEffectiveDate < sourceOpening ||
-        input.destinationEffectiveDate < destinationOpening
-      )
-        throw new BadRequestException('Transfer date precedes account opening');
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${householdId}:transfer:create:${key}`}, 0))`,
       );
@@ -118,6 +95,27 @@ export class TransferService {
           throw new ConflictException('Idempotency key already used');
         return prior.rows[0].response;
       }
+      const accounts = await tx.execute<{
+        id: string;
+        openingDate: string;
+      }>(sql`
+        SELECT id, opening_date::text AS "openingDate" FROM finance.accounts
+        WHERE household_id = ${householdId}
+          AND id IN (${input.sourceAccountId}::uuid, ${input.destinationAccountId}::uuid)
+        ORDER BY id FOR UPDATE`);
+      if (accounts.rows.length !== 2)
+        throw new NotFoundException('Financial resource not found');
+      const sourceOpening = accounts.rows.find(
+        (row) => row.id === input.sourceAccountId,
+      )!.openingDate;
+      const destinationOpening = accounts.rows.find(
+        (row) => row.id === input.destinationAccountId,
+      )!.openingDate;
+      if (
+        input.sourceEffectiveDate < sourceOpening ||
+        input.destinationEffectiveDate < destinationOpening
+      )
+        throw new BadRequestException('Transfer date precedes account opening');
       const eventId = randomUUID();
       const sourceMovementId = randomUUID();
       const destinationMovementId = randomUUID();
@@ -168,6 +166,9 @@ export class TransferService {
       v.description, src.id AS "sourceMovementId", dst.id AS "destinationMovementId",
       src.amount_cents::text AS "sourceMovementAmountCents",
       dst.amount_cents::text AS "destinationMovementAmountCents",
+      src.state AS "sourceState", dst.state AS "destinationState",
+      source_account.opening_date::text AS "sourceOpeningDate",
+      destination_account.opening_date::text AS "destinationOpeningDate",
       v.date_provenance AS "sourceDateProvenance",
       v.date_provenance AS "destinationDateProvenance",
       to_char(v.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "recordedAt"
@@ -178,6 +179,10 @@ export class TransferService {
         = (v.household_id, v.movement_id, v.version)
       JOIN finance.movements dst ON (dst.household_id, dst.id, dst.version)
         = (v.household_id, v.destination_movement_id, v.version)
+      JOIN finance.accounts source_account ON (source_account.household_id, source_account.id)
+        = (v.household_id, v.account_id)
+      JOIN finance.accounts destination_account ON (destination_account.household_id, destination_account.id)
+        = (v.household_id, v.destination_account_id)
       WHERE e.household_id = ${householdId} AND e.id = ${eventId}
         AND e.type = 'INTERNAL_TRANSFER'`);
     if (!result.rows[0])
@@ -208,6 +213,7 @@ export class TransferService {
         : sql``;
       const result = await tx.execute<{
         totalCents: string;
+        hasPendingTransferSide: boolean;
         eventId: string | null;
         amountCents: string | null;
         sourceEffectiveDate: string | null;
@@ -222,15 +228,29 @@ export class TransferService {
             AND v.destination_effective_date > ${date}::date
         ), total AS (
           SELECT COALESCE(sum(amount_cents::numeric), 0)::text AS cents FROM matching
+        ), pending AS (
+          SELECT EXISTS (
+            SELECT 1 FROM finance.events e
+            JOIN finance.event_versions v ON (v.household_id, v.event_id, v.version)
+              = (e.household_id, e.id, e.current_version)
+            JOIN finance.movements src ON (src.household_id, src.id, src.version)
+              = (v.household_id, v.movement_id, v.version)
+            JOIN finance.movements dst ON (dst.household_id, dst.id, dst.version)
+              = (v.household_id, v.destination_movement_id, v.version)
+            WHERE e.household_id = ${householdId} AND e.type = 'INTERNAL_TRANSFER'
+              AND v.effective_date <= ${date}::date
+              AND (src.state = 'PENDING_PRE_OPENING' OR dst.state = 'PENDING_PRE_OPENING')
+          ) AS has_pending
         ), page AS (
           SELECT event_id, amount_cents, effective_date FROM matching
           WHERE true ${after}
           ORDER BY effective_date, event_id LIMIT ${limit + 1}
         )
-        SELECT total.cents AS "totalCents", page.event_id AS "eventId",
+        SELECT total.cents AS "totalCents", pending.has_pending AS "hasPendingTransferSide",
+          page.event_id AS "eventId",
           page.amount_cents::text AS "amountCents",
           page.effective_date::text AS "sourceEffectiveDate"
-        FROM total LEFT JOIN page ON true
+        FROM total CROSS JOIN pending LEFT JOIN page ON true
         ORDER BY page.effective_date, page.event_id`,
       );
       const page = result.rows
@@ -252,6 +272,7 @@ export class TransferService {
         date,
         currency: 'BRL',
         totalCents: result.rows[0].totalCents,
+        hasPendingTransferSide: result.rows[0].hasPendingTransferSide,
         items: page.map(({ eventId, amountCents }) => ({
           eventId,
           amountCents,

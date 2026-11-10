@@ -46,7 +46,7 @@ class TransferBody {
 }
 class TransferResponse extends TransferBody {
   @ApiProperty({ format: 'uuid' }) eventId!: string;
-  @ApiProperty({ enum: [1] }) version!: number;
+  @ApiProperty({ enum: [1, 2] }) version!: number;
   @ApiProperty({ enum: ['INTERNAL_TRANSFER'] }) type!: string;
   @ApiProperty({ format: 'uuid' }) sourceMovementId!: string;
   @ApiProperty({ format: 'uuid' }) destinationMovementId!: string;
@@ -57,6 +57,18 @@ class TransferResponse extends TransferBody {
   @ApiProperty({ enum: ['MANUAL_USER'] }) sourceDateProvenance!: string;
   @ApiProperty({ enum: ['MANUAL_USER'] }) destinationDateProvenance!: string;
   @ApiProperty({ format: 'date-time' }) recordedAt!: string;
+  @ApiProperty({
+    enum: ['APPLIED', 'PENDING_PRE_OPENING'],
+    required: false,
+    description:
+      'Current inclusion of the source movement; old creation replays may omit it.',
+  })
+  sourceState?: string;
+  @ApiProperty({ enum: ['APPLIED', 'PENDING_PRE_OPENING'], required: false })
+  destinationState?: string;
+  @ApiProperty({ format: 'date', required: false }) sourceOpeningDate?: string;
+  @ApiProperty({ format: 'date', required: false })
+  destinationOpeningDate?: string;
 }
 class InTransitItem {
   @ApiProperty({ format: 'uuid' }) eventId!: string;
@@ -67,6 +79,11 @@ class InTransitResponse {
   @ApiProperty({ enum: ['BRL'] }) currency!: string;
   @ApiProperty({ description: 'Exact aggregate integer cents.' })
   totalCents!: string;
+  @ApiProperty({
+    description:
+      'True if any confirmed transfer with source day at or before this day has a pending side. The factual transit total alone must not be used as a consolidated balance.',
+  })
+  hasPendingTransferSide!: boolean;
   @ApiProperty({ type: [InTransitItem] }) items!: InTransitItem[];
   @ApiProperty({
     type: String,

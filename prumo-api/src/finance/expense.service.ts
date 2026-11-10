@@ -122,7 +122,7 @@ export class ExpenseService {
   ): Promise<ExpenseView> {
     return this.authorized(userId, householdId, true, async (tx) => {
       const account = await tx.execute<{ openingDate: string }>(
-        sql`SELECT opening_date::text AS "openingDate" FROM finance.accounts WHERE household_id = ${householdId} AND id = ${input.accountId}`,
+        sql`SELECT opening_date::text AS "openingDate" FROM finance.accounts WHERE household_id = ${householdId} AND id = ${input.accountId} FOR UPDATE`,
       );
       if (!account.rows[0])
         throw new NotFoundException('Financial resource not found');
@@ -170,8 +170,8 @@ export class ExpenseService {
     const result =
       await tx.execute<ExpenseView>(sql`SELECT v.event_id AS "eventId", v.movement_id AS "movementId", v.version, e.type,
       v.category_id AS "categoryId", m.amount_cents::text AS "movementAmountCents", v.account_id AS "accountId", v.amount_cents::text AS "amountCents", v.currency,
-      v.effective_date::text AS "effectiveDate", v.description, v.state,
-      CASE WHEN v.state = 'PENDING_PRE_OPENING' THEN 'PRE_OPENING' ELSE NULL END AS "pendingReason",
+      v.effective_date::text AS "effectiveDate", v.description, m.state,
+      CASE WHEN m.state = 'PENDING_PRE_OPENING' THEN 'PRE_OPENING' ELSE NULL END AS "pendingReason",
       v.date_provenance AS "dateProvenance", to_char(v.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "recordedAt", m.sequence::text AS sequence
       FROM finance.events e JOIN finance.event_versions v ON (v.household_id, v.event_id, v.version) = (e.household_id, e.id, e.current_version)
       JOIN finance.movements m ON (m.household_id, m.id, m.version) = (v.household_id, v.movement_id, v.version)

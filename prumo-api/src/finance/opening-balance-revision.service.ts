@@ -14,12 +14,14 @@ export type OpeningRevisionInput = {
   expectedVersion: number;
   openingBalanceCents: string;
   reason: string;
+  openingDate?: string;
 };
 export type OpeningRevisionView = {
   revisionId: string | null;
   accountId: string;
   version: number;
   openingDate: string;
+  previousOpeningDate?: string | null;
   previousBalanceCents: string | null;
   openingBalanceCents: string;
   reason: string | null;
@@ -105,26 +107,46 @@ export class OpeningBalanceRevisionService {
       const current = account.rows[0];
       if (current.openingVersion !== input.expectedVersion)
         throw new ConflictException('Opening balance version changed');
+      const openingDate = input.openingDate ?? current.openingDate;
       const changed = await tx.execute<OpeningRevisionView>(sql`
         INSERT INTO finance.opening_balance_revisions (
-          household_id, account_id, previous_version, version, opening_date,
+          household_id, account_id, previous_version, version, previous_opening_date, opening_date,
           previous_balance_cents, opening_balance_cents, reason, actor_user_id
         ) VALUES (
           ${householdId}, ${accountId}, ${current.openingVersion},
-          ${current.openingVersion + 1}, ${current.openingDate}::date,
+          ${current.openingVersion + 1}, ${current.openingDate}::date, ${openingDate}::date,
           ${current.openingBalanceCents}::bigint, ${input.openingBalanceCents}::bigint,
           ${input.reason}, ${userId}
         ) RETURNING id AS "revisionId", account_id AS "accountId", version,
-          opening_date::text AS "openingDate",
+          previous_opening_date::text AS "previousOpeningDate", opening_date::text AS "openingDate",
           previous_balance_cents::text AS "previousBalanceCents",
           opening_balance_cents::text AS "openingBalanceCents", reason,
           actor_user_id AS "actorUserId",
           to_char(revised_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "revisedAt"`);
       await tx.execute(sql`
         UPDATE finance.accounts SET opening_balance_cents = ${input.openingBalanceCents}::bigint,
-          opening_version = ${current.openingVersion + 1}
+          opening_date = ${openingDate}::date, opening_version = ${current.openingVersion + 1}
         WHERE household_id = ${householdId} AND id = ${accountId}`);
       const result = changed.rows[0];
+      await tx.execute(sql`
+        INSERT INTO finance.movement_opening_transitions (
+          household_id, account_id, movement_id, movement_version, event_id,
+          revision_id, previous_state, state)
+        SELECT m.household_id, m.account_id, m.id, m.version, m.event_id,
+          ${result.revisionId}::uuid, m.state,
+          CASE WHEN m.effective_date < ${openingDate}::date
+            THEN 'PENDING_PRE_OPENING' ELSE 'APPLIED' END
+        FROM finance.movements m JOIN finance.events e
+          ON (e.household_id, e.id, e.current_version) = (m.household_id, m.event_id, m.version)
+        WHERE m.household_id = ${householdId} AND m.account_id = ${accountId}
+          AND m.state <> CASE WHEN m.effective_date < ${openingDate}::date
+            THEN 'PENDING_PRE_OPENING' ELSE 'APPLIED' END`);
+      await tx.execute(sql`
+        UPDATE finance.movements m SET state = t.state
+        FROM finance.movement_opening_transitions t
+        WHERE (t.household_id, t.movement_id, t.movement_version)
+          = (m.household_id, m.id, m.version)
+          AND t.revision_id = ${result.revisionId}::uuid`);
       await tx.execute(sql`
         INSERT INTO finance.opening_balance_revision_requests (
           household_id, request_key, actor_user_id, account_id,
@@ -150,18 +172,20 @@ export class OpeningBalanceRevisionService {
         throw new NotFoundException('Financial resource not found');
       const rows = await tx.execute<OpeningRevisionView>(sql`
         SELECT NULL::uuid AS "revisionId", a.id AS "accountId", 1 AS version,
-          a.opening_date::text AS "openingDate", NULL::text AS "previousBalanceCents",
+          COALESCE(first.previous_opening_date, a.opening_date)::text AS "openingDate",
+          NULL::text AS "previousOpeningDate", NULL::text AS "previousBalanceCents",
           COALESCE(first.previous_balance_cents, a.opening_balance_cents)::text AS "openingBalanceCents",
           NULL::text AS reason, a.created_by_user_id AS "actorUserId",
           to_char(a.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "revisedAt"
         FROM finance.accounts a
         LEFT JOIN LATERAL (
-          SELECT previous_balance_cents FROM finance.opening_balance_revisions r
+          SELECT previous_balance_cents, previous_opening_date FROM finance.opening_balance_revisions r
           WHERE r.household_id = a.household_id AND r.account_id = a.id AND r.version = 2
         ) first ON true
         WHERE a.household_id = ${householdId} AND a.id = ${accountId} AND ${afterVersion} < 1
         UNION ALL
         SELECT r.id, r.account_id, r.version, r.opening_date::text,
+          r.previous_opening_date::text,
           r.previous_balance_cents::text, r.opening_balance_cents::text,
           r.reason, r.actor_user_id,
           to_char(r.revised_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')

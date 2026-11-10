@@ -352,6 +352,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/households/{householdId}/transactions/unclassified-outflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OutflowController_list"];
+        put?: never;
+        post: operations["OutflowController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transactions/unclassified-outflows/{eventId}/arrival-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OutflowController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/households/{householdId}/transactions/unclassified-outflows/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OutflowController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/households/{householdId}/accounts": {
         parameters: {
             query?: never;
@@ -644,6 +692,84 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        OutflowBody: {
+            /** Format: uuid */
+            sourceAccountId: string;
+            /** @description Positive BRL cents, at most 9007199254740991. */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            sourceEffectiveDate: string;
+            description: string;
+        };
+        ResolutionResponse: {
+            /** Format: uuid */
+            actorUserId: string;
+            reason: string;
+            /** Format: date-time */
+            recordedAt: string;
+            /** @enum {number} */
+            previousVersion: 1;
+        };
+        OutflowResponse: {
+            /** Format: uuid */
+            sourceAccountId: string;
+            /** @description Positive BRL cents, at most 9007199254740991. */
+            amountCents: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** Format: date */
+            sourceEffectiveDate: string;
+            description: string;
+            /** Format: uuid */
+            eventId: string;
+            /** @enum {number} */
+            version: 1 | 2;
+            /** @enum {string} */
+            type: "UNCLASSIFIED_OUTFLOW" | "INTERNAL_TRANSFER";
+            /** Format: uuid */
+            sourceMovementId: string;
+            sourceMovementAmountCents: string;
+            /** @enum {string} */
+            sourceState: "APPLIED" | "PENDING_PRE_OPENING";
+            /** @enum {string} */
+            sourceDateProvenance: "MANUAL_USER";
+            /** Format: date-time */
+            recordedAt: string;
+            /** Format: uuid */
+            recordedByUserId: string;
+            /** Format: uuid */
+            destinationAccountId: string | null;
+            /** Format: uuid */
+            destinationMovementId: string | null;
+            /** Format: date */
+            destinationEffectiveDate: string | null;
+            /** @enum {string|null} */
+            destinationState: "APPLIED" | "PENDING_PRE_OPENING" | null;
+            destinationMovementAmountCents: string | null;
+            resolution: components["schemas"]["ResolutionResponse"] | null;
+        };
+        ArrivalBody: {
+            /** @enum {number} */
+            expectedVersion: 1;
+            /** Format: uuid */
+            destinationAccountId: string;
+            /** Format: date */
+            destinationEffectiveDate: string;
+            reason: string;
+        };
+        OutflowPage: {
+            /** Format: date */
+            date: string;
+            /** @enum {string} */
+            currency: "BRL";
+            /** @description Exact aggregate of economically unclassified debits, separate from confirmed transit. */
+            reviewOutflowCents: string;
+            hasUnclassifiedOutflow: boolean;
+            items: components["schemas"]["OutflowResponse"][];
+            nextCursor: string | null;
+        };
         AccountBody: {
             name: string;
             /** @enum {string} */
@@ -710,9 +836,9 @@ export interface components {
             /** Format: uuid */
             movementId: string;
             /** @enum {number} */
-            version: 1;
+            version: 1 | 2;
             /** @enum {string} */
-            type: "RECEIVED_INCOME" | "DIRECT_EXPENSE" | "INTERNAL_TRANSFER";
+            type: "RECEIVED_INCOME" | "DIRECT_EXPENSE" | "INTERNAL_TRANSFER" | "UNCLASSIFIED_OUTFLOW";
             /** Format: uuid */
             categoryId: string | null;
             /** @description Signed account movement in cents. */
@@ -845,7 +971,7 @@ export interface components {
             /** Format: uuid */
             eventId: string;
             /** @enum {number} */
-            version: 1;
+            version: 1 | 2;
             /** @enum {string} */
             type: "INTERNAL_TRANSFER";
             /** Format: uuid */
@@ -862,6 +988,17 @@ export interface components {
             destinationDateProvenance: "MANUAL_USER";
             /** Format: date-time */
             recordedAt: string;
+            /**
+             * @description Current inclusion of the source movement; old creation replays may omit it.
+             * @enum {string}
+             */
+            sourceState?: "APPLIED" | "PENDING_PRE_OPENING";
+            /** @enum {string} */
+            destinationState?: "APPLIED" | "PENDING_PRE_OPENING";
+            /** Format: date */
+            sourceOpeningDate?: string;
+            /** Format: date */
+            destinationOpeningDate?: string;
         };
         InTransitItem: {
             /** Format: uuid */
@@ -876,6 +1013,8 @@ export interface components {
             currency: "BRL";
             /** @description Exact aggregate integer cents. */
             totalCents: string;
+            /** @description True if any confirmed transfer with source day at or before this day has a pending side. The factual transit total alone must not be used as a consolidated balance. */
+            hasPendingTransferSide: boolean;
             items: components["schemas"]["InTransitItem"][];
             /** @description Cursor by source day and event ID. */
             nextCursor: string | null;
@@ -888,6 +1027,11 @@ export interface components {
              * @example 499000
              */
             openingBalanceCents: string;
+            /**
+             * Format: date
+             * @description Opening day at its start; omitted means the current opening day.
+             */
+            openingDate?: string;
             reason: string;
         };
         RevisionResponse: {
@@ -899,6 +1043,11 @@ export interface components {
             version: number;
             /** Format: date */
             openingDate: string;
+            /**
+             * Format: date
+             * @description Previous opening day. Historical replays created before this contract omit it.
+             */
+            previousOpeningDate?: string | null;
             previousBalanceCents: Record<string, never> | null;
             openingBalanceCents: string;
             reason: Record<string, never> | null;
@@ -1872,6 +2021,110 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    OutflowController_list: {
+        parameters: {
+            query: {
+                date: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutflowPage"];
+                };
+            };
+        };
+    };
+    OutflowController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutflowBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutflowResponse"];
+                };
+            };
+        };
+    };
+    OutflowController_link: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "Idempotency-Key": string;
+            };
+            path: {
+                householdId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArrivalBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutflowResponse"];
+                };
+            };
+        };
+    };
+    OutflowController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                householdId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutflowResponse"];
+                };
             };
         };
     };

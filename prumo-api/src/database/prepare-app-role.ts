@@ -84,10 +84,13 @@ try {
   );
   await pool.query('GRANT USAGE ON SCHEMA finance TO prumo_app');
   await pool.query(
-    'GRANT SELECT, INSERT, UPDATE (opening_balance_cents, opening_version) ON finance.accounts TO prumo_app',
+    'GRANT SELECT, INSERT, UPDATE (opening_date, opening_balance_cents, opening_version) ON finance.accounts TO prumo_app',
   );
   await pool.query(
     'GRANT SELECT, INSERT ON finance.opening_balance_revisions, finance.opening_balance_revision_requests TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT ON finance.movement_opening_transitions TO prumo_app',
   );
   await pool.query(
     'GRANT SELECT, INSERT ON finance.account_requests TO prumo_app',
@@ -95,6 +98,13 @@ try {
   await pool.query(
     'GRANT SELECT, INSERT ON finance.events, finance.event_versions, finance.movements, finance.income_requests TO prumo_app',
   );
+  await pool.query(
+    'GRANT UPDATE (type, current_version) ON finance.events TO prumo_app',
+  );
+  await pool.query(
+    'GRANT SELECT, INSERT ON finance.arrival_links, finance.outflow_requests TO prumo_app',
+  );
+  await pool.query('GRANT UPDATE (state) ON finance.movements TO prumo_app');
   await pool.query(
     'GRANT SELECT, INSERT ON finance.expense_categories, finance.category_requests, finance.expense_requests TO prumo_app',
   );

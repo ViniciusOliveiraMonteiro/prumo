@@ -61,7 +61,25 @@ function input(body: RevisionBody): OpeningRevisionInput {
   const reason = body.reason.trim();
   if (reason.length < 1 || reason.length > 500 || reason.includes('\0'))
     throw new BadRequestException('Invalid reason');
-  return { expectedVersion, openingBalanceCents: cents.toString(), reason };
+  if (body.openingDate !== undefined) {
+    const value = body.openingDate;
+    if (
+      typeof value !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+      value.startsWith('0000-') ||
+      !Number.isFinite(Date.parse(`${value}T00:00:00.000Z`)) ||
+      new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) !== value
+    )
+      throw new BadRequestException('Invalid opening date');
+  }
+  return {
+    expectedVersion,
+    openingBalanceCents: cents.toString(),
+    reason,
+    ...(body.openingDate === undefined
+      ? {}
+      : { openingDate: body.openingDate }),
+  };
 }
 function pageInt(
   value: string | undefined,
@@ -87,6 +105,14 @@ class RevisionBody {
   })
   openingBalanceCents!: string;
 
+  @ApiProperty({
+    format: 'date',
+    required: false,
+    description:
+      'Opening day at its start; omitted means the current opening day.',
+  })
+  openingDate?: string;
+
   @ApiProperty({ minLength: 1, maxLength: 500 })
   reason!: string;
 }
@@ -99,6 +125,15 @@ class RevisionResponse {
   version!: number;
   @ApiProperty({ format: 'date' })
   openingDate!: string;
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    required: false,
+    description:
+      'Previous opening day. Historical replays created before this contract omit it.',
+  })
+  previousOpeningDate?: string | null;
   @ApiProperty({ nullable: true })
   previousBalanceCents!: string | null;
   @ApiProperty()

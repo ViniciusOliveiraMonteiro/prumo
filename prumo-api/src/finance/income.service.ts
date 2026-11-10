@@ -22,7 +22,11 @@ export type IncomeView = IncomeInput & {
   eventId: string;
   movementId: string;
   version: number;
-  type: 'RECEIVED_INCOME' | 'DIRECT_EXPENSE' | 'INTERNAL_TRANSFER';
+  type:
+    | 'RECEIVED_INCOME'
+    | 'DIRECT_EXPENSE'
+    | 'INTERNAL_TRANSFER'
+    | 'UNCLASSIFIED_OUTFLOW';
   categoryId: string | null;
   movementAmountCents: string;
   state: 'APPLIED' | 'PENDING_PRE_OPENING';
@@ -81,7 +85,7 @@ export class IncomeService {
     accountId: string,
   ): Promise<string> {
     const result = await tx.execute<{ openingDate: string }>(
-      sql`SELECT opening_date::text AS "openingDate" FROM finance.accounts WHERE household_id = ${householdId} AND id = ${accountId}`,
+      sql`SELECT opening_date::text AS "openingDate" FROM finance.accounts WHERE household_id = ${householdId} AND id = ${accountId} FOR UPDATE`,
     );
     if (!result.rows[0])
       throw new NotFoundException('Financial resource not found');

@@ -1,3 +1,5 @@
+import { OutflowController } from './outflow.controller.js';
+import { OutflowService } from './outflow.service.js';
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity/identity.module.js';
 import { IncomeController } from './income.controller.js';
@@ -14,6 +16,7 @@ import { OpeningBalanceRevisionService } from './opening-balance-revision.servic
 @Module({
   imports: [IdentityModule],
   controllers: [
+    OutflowController,
     AccountController,
     IncomeController,
     ExpenseController,
@@ -21,6 +24,7 @@ import { OpeningBalanceRevisionService } from './opening-balance-revision.servic
     OpeningBalanceRevisionController,
   ],
   providers: [
+    OutflowService,
     AccountService,
     IncomeService,
     ExpenseService,
