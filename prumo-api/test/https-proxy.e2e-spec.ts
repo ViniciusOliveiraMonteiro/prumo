@@ -66,6 +66,7 @@ test(
     let proxy: ReturnType<typeof createHttpsServer> | undefined;
     let invitationHouseholdId: string | undefined;
     let secondHouseholdId: string | undefined;
+    let firstUsersOtherHouseholdId: string | undefined;
     const sharedCache = new Map<
       string,
       { status: number; headers: IncomingHttpHeaders; body: Buffer }
@@ -458,6 +459,17 @@ test(
         JSON.parse(createdHousehold.body) as { id: string }
       ).id;
       expect(createdHousehold.headers['cache-control']).toBe('no-store');
+      const firstUsersOtherHousehold = await call(
+        '/api/households',
+        'POST',
+        { name: 'Other first-user household' },
+        firstCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(firstUsersOtherHousehold.status).toBe(201);
+      firstUsersOtherHouseholdId = (
+        JSON.parse(firstUsersOtherHousehold.body) as { id: string }
+      ).id;
       const secondHousehold = await call(
         '/api/households',
         'POST',
@@ -524,6 +536,220 @@ test(
               (url) => new URL(url).origin === process.env.PRUMO_PUBLIC_ORIGIN,
             ),
           ).toBe(true);
+          const requestKeys: string[] = [];
+          let firstResponseReplaced = false;
+          let forcedStatus: number | null = null;
+          let holdNextResponse = false;
+          let signalPersisted: (() => void) | undefined;
+          let releaseHeldResponse: (() => void) | undefined;
+          await page.route(
+            `**/api/households/${invitationHouseholdId}/accounts`,
+            async (route) => {
+              if (route.request().method() !== 'POST') {
+                await route.continue();
+                return;
+              }
+              requestKeys.push(
+                route.request().headers()['idempotency-key'] ?? '',
+              );
+              if (forcedStatus !== null) {
+                await route.fulfill({ status: forcedStatus, body: '' });
+                return;
+              }
+              if (holdNextResponse) {
+                holdNextResponse = false;
+                const response = await route.fetch();
+                expect(response.status()).toBe(201);
+                signalPersisted?.();
+                await new Promise<void>((resolveRelease) => {
+                  releaseHeldResponse = resolveRelease;
+                });
+                await route.fulfill({ status: 503, body: '' }).catch(() => {});
+                return;
+              }
+              if (!firstResponseReplaced) {
+                firstResponseReplaced = true;
+                const response = await route.fetch();
+                expect(response.status()).toBe(201);
+                expect(response.headers()['cache-control']).toContain(
+                  'no-store',
+                );
+                await route.fulfill({ status: 503, body: '' });
+                return;
+              }
+              await route.continue();
+            },
+          );
+          await page
+            .getByLabel('Nome da conta')
+            .fill('Conta criada no browser');
+          await page.getByLabel('Data do marco').fill('2026-01-10');
+          await page.getByLabel('Saldo inicial (R$)').fill('1.234,56');
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await page
+            .getByRole('button', { name: 'Tentar novamente' })
+            .waitFor();
+          expect(await page.getByLabel('Nome da conta').isDisabled()).toBe(
+            true,
+          );
+          await page.getByRole('button', { name: 'Tentar novamente' }).click();
+          await page
+            .getByText('Conta criada no browser', { exact: true })
+            .waitFor();
+          expect(requestKeys).toHaveLength(2);
+          expect(requestKeys[0]).toBe(requestKeys[1]);
+          expect(requestKeys[0]).toMatch(/^[0-9a-f-]{36}$/);
+          expect(
+            await page
+              .locator('.account-list li')
+              .filter({ hasText: 'Conta criada no browser' })
+              .count(),
+          ).toBe(1);
+          const accounts = await call(
+            `/api/households/${invitationHouseholdId}/accounts`,
+            'GET',
+            undefined,
+            firstCookie,
+          );
+          expect(accounts.status).toBe(200);
+          expect(
+            (
+              JSON.parse(accounts.body) as Array<{
+                name: string;
+                openingBalanceCents: string;
+              }>
+            ).filter((account) => account.name === 'Conta criada no browser'),
+          ).toEqual([
+            expect.objectContaining({ openingBalanceCents: '123456' }),
+          ]);
+          const persistedWhilePending = new Promise<void>(
+            (resolvePersisted) => {
+              signalPersisted = resolvePersisted;
+            },
+          );
+          holdNextResponse = true;
+          await page
+            .getByLabel('Nome da conta')
+            .fill('Conta de resposta incerta');
+          await page.getByLabel('Data do marco').fill('2026-01-10');
+          await page.getByLabel('Saldo inicial (R$)').fill('2,00');
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await persistedWhilePending;
+          await page
+            .getByRole('link', { name: 'Other first-user household' })
+            .click();
+          releaseHeldResponse?.();
+          await page
+            .getByRole('link', { name: 'Proxy invitation test' })
+            .click();
+          await page
+            .getByText('Conta de resposta incerta', { exact: true })
+            .waitFor();
+          await page
+            .getByRole('button', { name: 'Conferi a lista de contas' })
+            .waitFor();
+          expect(await page.getByLabel('Nome da conta').isDisabled()).toBe(
+            true,
+          );
+          await page
+            .getByRole('button', { name: 'Conferi a lista de contas' })
+            .click();
+          expect(await page.getByLabel('Nome da conta').isEnabled()).toBe(true);
+          const requestsBeforeStorageFailure = requestKeys.length;
+          await page.evaluate(() => {
+            const original = Storage.prototype.setItem;
+            Storage.prototype.setItem = function (key, value) {
+              if (key.startsWith('prumo-account-unconfirmed:')) {
+                throw new DOMException(
+                  'Storage unavailable',
+                  'QuotaExceededError',
+                );
+              }
+              original.call(this, key, value);
+            };
+          });
+          await page.getByLabel('Nome da conta').fill('Conta sem marcador');
+          await page.getByLabel('Data do marco').fill('2026-01-10');
+          await page.getByLabel('Saldo inicial (R$)').fill('3,00');
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await page
+            .getByText('O navegador não permite preservar esta tentativa.')
+            .waitFor();
+          expect(requestKeys).toHaveLength(requestsBeforeStorageFailure);
+          await page.reload();
+          await page.evaluate(() => {
+            const original = Storage.prototype.getItem;
+            Storage.prototype.getItem = function (key) {
+              if (key.startsWith('prumo-account-unconfirmed:')) {
+                throw new DOMException('Storage unavailable', 'SecurityError');
+              }
+              return original.call(this, key);
+            };
+            window.dispatchEvent(new Event('prumo-account-marker'));
+          });
+          await page
+            .getByText('Não foi possível ler o armazenamento da aba.')
+            .waitFor();
+          expect(await page.getByLabel('Nome da conta').isDisabled()).toBe(
+            true,
+          );
+          expect(requestKeys).toHaveLength(requestsBeforeStorageFailure);
+          await page.reload();
+          forcedStatus = 400;
+          const previousKey = requestKeys.at(-1);
+          await page
+            .getByLabel('Nome da conta')
+            .fill('Conta com dados recusados');
+          await page.getByLabel('Data do marco').fill('2026-01-10');
+          await page.getByLabel('Saldo inicial (R$)').fill('3,00');
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await page.getByText('Dados inválidos.').waitFor();
+          expect(requestKeys.at(-1)).not.toBe(previousKey);
+          forcedStatus = 404;
+          const rejectedKey = requestKeys.at(-1);
+          await page.getByLabel('Nome da conta').fill('Conta sem household');
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await page.getByText('Este household não está disponível.').waitFor();
+          expect(requestKeys.at(-1)).not.toBe(rejectedKey);
+          forcedStatus = 409;
+          await page.getByLabel('Nome da conta').fill('Conta em conflito');
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await page
+            .getByText('Pedido em conflito.', { exact: false })
+            .waitFor();
+          expect(
+            await page
+              .getByRole('button', { name: 'Tentar novamente' })
+              .count(),
+          ).toBe(0);
+          await page
+            .getByRole('button', {
+              name: 'Descartar tentativa e conferir contas',
+            })
+            .click();
+          await page
+            .getByRole('button', { name: 'Conferi a lista de contas' })
+            .click();
+          forcedStatus = null;
+          await page
+            .getByLabel('Nome da conta')
+            .fill('Conta com sessão revogada');
+          await page.getByLabel('Data do marco').fill('2026-01-10');
+          await page.getByLabel('Saldo inicial (R$)').fill('4,00');
+          const browserCookie = sessionCookies.find(
+            (cookie) => cookie.name === '__Host-sid',
+          );
+          if (!browserCookie) throw new Error('Browser session cookie missing');
+          const browserSignOut = await call(
+            '/api/auth/sign-out',
+            'POST',
+            undefined,
+            `__Host-sid=${browserCookie.value}`,
+            process.env.PRUMO_PUBLIC_ORIGIN,
+          );
+          expect(browserSignOut.status).toBe(204);
+          await page.getByRole('button', { name: 'Abrir conta' }).click();
+          await page.waitForURL('**/entrar');
         } finally {
           await browser.close();
         }
@@ -653,6 +879,25 @@ test(
         secondCookie,
       );
       expect(afterAccept.status).toBe(200);
+      const viewerFinance = await financePage(
+        invitationHouseholdId,
+        secondCookie,
+      );
+      expect(viewerFinance).not.toContain('Abrir conta');
+      const viewerCreate = await call(
+        `/api/households/${invitationHouseholdId}/accounts`,
+        'POST',
+        {
+          name: 'Tentativa de viewer',
+          currency: 'BRL',
+          openingDate: '2026-01-10',
+          openingBalanceCents: '100',
+        },
+        secondCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+        { 'Idempotency-Key': randomUUID() },
+      );
+      expect(viewerCreate.status).toBe(403);
       const hostile = await call(
         '/api/auth/sign-out',
         'POST',
@@ -788,7 +1033,11 @@ test(
       }
       writeFileSync(tsconfig, tsconfigBefore);
       if (app) await app.close();
-      for (const householdId of [invitationHouseholdId, secondHouseholdId]) {
+      for (const householdId of [
+        invitationHouseholdId,
+        secondHouseholdId,
+        firstUsersOtherHouseholdId,
+      ]) {
         if (!householdId) continue;
         await admin.query(
           'DELETE FROM finance.account_requests WHERE household_id = $1',
@@ -831,6 +1080,19 @@ test(
         );
         await admin.query('DELETE FROM household.households WHERE id = $1', [
           secondHouseholdId,
+        ]);
+      }
+      if (firstUsersOtherHouseholdId) {
+        await admin.query(
+          'DELETE FROM household.events WHERE household_id = $1',
+          [firstUsersOtherHouseholdId],
+        );
+        await admin.query(
+          'DELETE FROM household.memberships WHERE household_id = $1',
+          [firstUsersOtherHouseholdId],
+        );
+        await admin.query('DELETE FROM household.households WHERE id = $1', [
+          firstUsersOtherHouseholdId,
         ]);
       }
       for (const person of people) {

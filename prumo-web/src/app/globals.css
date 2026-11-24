@@ -128,6 +128,29 @@ p {
   width: 100%;
 }
 
+.create-account {
+  margin-top: 2rem;
+  border-top: 1px solid #cbd8ce;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: min(100%, 25rem);
+  margin-top: 1rem;
+}
+
+.account-form input {
+  width: 100%;
+}
+
+.account-form .secondary-button {
+  background: transparent;
+  color: #18352c;
+}
+
 .account-list {
   list-style: none;
   margin: 1.5rem 0 0;

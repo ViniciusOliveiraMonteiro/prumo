@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatCents, readFinances } from "../../lib/finance/read-finances";
 import { serverReadClient } from "../../lib/api/session";
+import { AccountCreateForm } from "./AccountCreateForm";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,12 @@ export default async function FinancePage({ searchParams }: Props) {
                     </li>
                   ))}
                 </ul>
+              )}
+              {data.household.role !== "VIEWER" && (
+                <AccountCreateForm
+                  key={data.household.id}
+                  householdId={data.household.id}
+                />
               )}
             </section>
           ) : (
