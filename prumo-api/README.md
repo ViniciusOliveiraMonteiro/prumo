@@ -44,6 +44,6 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" pnpm --filter prumo-api exe
 PRUMO_BROWSER_E2E=1 PLAYWRIGHT_BROWSERS_PATH=../.playwright-browsers pnpm exec vitest run --config ./vitest.config.e2e.ts test/https-proxy.e2e-spec.ts
 ```
 
-A execução direta requer as bibliotecas de sistema do Chromium; nesta distro WSL faltou `libnspr4.so`, e o gate foi validado em contêiner Playwright sem instalar pacotes do sistema. A CI instala Chromium e ativa `PRUMO_BROWSER_E2E` na suíte E2E; seu resultado ainda precisa ser conferido. Após alterar respostas HTTP, gere o contrato com `pnpm contract:generate` e valide `pnpm contract:check` e a web. Retificação financeira geral, integração web de comandos e a decisão final de RLS seguem pendentes.
+A execução direta requer as bibliotecas de sistema do Chromium; nesta distro WSL faltou `libnspr4.so`, e o gate foi validado em contêiner Playwright sem instalar pacotes do sistema. A CI instala Chromium e ativa `PRUMO_BROWSER_E2E` na suíte E2E; o [run 31](https://github.com/ViniciusOliveiraMonteiro/prumo/actions/runs/45439445600) passou no commit `b2f4001`. Após alterar respostas HTTP, gere o contrato com `pnpm contract:generate` e valide `pnpm contract:check` e a web. Retificação financeira geral, integração web de comandos e a decisão final de RLS seguem pendentes.
 
 Propósito, regras e execução completa estão no [Guia da aplicação](../docs/application/GUIA_DA_APLICACAO.md). O bootstrap está em [BOOTSTRAP_SPRINT_3](../docs/operations/BOOTSTRAP_SPRINT_3.md) e as instruções de trabalho em `../AGENTS.md`.

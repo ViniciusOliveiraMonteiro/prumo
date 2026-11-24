@@ -1,0 +1,38 @@
+# ADR-053: primeiro comando financeiro na web
+
+- **Status:** proposta; seleção e fluxo da interface aguardam aceite
+- **Data:** 2026-11-24
+- **Escopo:** primeiro comando financeiro da Sprint 5 na web privada, usando contrato já implementado na API; sem nova regra de saldo ou persistência
+
+## Contexto
+
+A página `/financas` já lê households, contas e saldo por data com sessão da API, mas não permite comandos. A [ADR-046](ADR-046-first-financial-account-proposal.md#contrato-e-fronteira-propostos) aceita criação de conta com marco inicial, `Idempotency-Key` UUID, BRL em centavos inteiros e autorização `finance:write` para `OWNER` e `MEMBER`; a API e o OpenAPI já implementam esse contrato. A [ADR-032](ADR-032-web-api-contract.md#decisão) exige preservar a chave em retries da mesma intenção, e a [ADR-035](ADR-035-code-organization.md#decisão) separa apresentação, hook e adapter HTTP. A web não deve decidir saldo nem confiar no seletor como autorização.
+
+Falta escolher o primeiro comando da interface e delimitar o comportamento quando a resposta de criação se perde. O fuso de produto ainda não foi decidido; a data do marco continuará explícita.
+
+## Alternativas
+
+| Primeiro comando | Ganho | Custo ou risco |
+|---|---|---|
+| Abrir conta com marco inicial | Usa um contrato aceito, permite começar um household sem contas e prepara os movimentos seguintes | Exige entrada cuidadosa de centavos e retry sem duplicação |
+| Registrar receita recebida | Demonstra logo um movimento e seu efeito no saldo | Depende de uma conta preexistente; não atende o estado vazio da web |
+| Registrar despesa ou transferência | Avança o fluxo econômico completo | Exige categoria ou duas contas e amplia a primeira interação de escrita |
+
+## Escolha proposta
+
+Adicionar em `/financas` um formulário de **abertura de conta** apenas quando o household selecionado tem papel `OWNER` ou `MEMBER`. O formulário pede nome, dia civil do marco e saldo inicial em BRL, inclusive zero ou valor negativo. A data não recebe valor automático dependente de fuso. A web converte a entrada monetária decimal para uma string inteira de centavos sem `Number` nem arredondamento e confirma ao usuário que o marco **não é receita**. A API continua validando nome, data, limite, membership e todos os recursos.
+
+O componente cliente usa um hook próprio e uma porta de criação com adapter `fetch` para `POST /api/households/{householdId}/accounts` na mesma origem. Envia `currency: "BRL"`, `openingDate`, `openingBalanceCents` e `Idempotency-Key` UUID. O hook conserva a mesma chave enquanto o payload normalizado e o household forem iguais, inclusive após falha de rede ou resposta ambígua com o formulário montado. Depois de uma resposta ambígua, o formulário mantém a intenção para retry idêntico; mudar campos ou household exige descartar essa intenção explicitamente e conferir a lista antes de iniciar outra. Após `201`, a web atualiza a leitura de `/financas` e limpa a intenção. A página não armazena saldo ou nome em `localStorage` ou `sessionStorage`; após recarregar em meio a uma resposta incerta, a interface orienta consultar a lista antes de submeter de novo. Esta é uma limitação explícita do primeiro recorte, sem promessa de retry automático entre recargas.
+
+`401` leva ao login sem mostrar dados da intenção em URL; `403` informa falta de permissão; `404` informa que o household não está disponível; `409` informa conflito da chave e pede conferir a lista antes de nova tentativa; `400` pede correção dos campos; `5xx` ou falha de rede mantém os campos e a chave para retry. Mensagens não incluem detalhes internos ou dados de outro household. O papel recebido na lista controla somente a apresentação do formulário; a API revalida autorização em cada POST. Respostas financeiras continuam `private, no-store`.
+
+## Gate de implementação
+
+1. Testar conversão exata de `R$ 1.234,56`, zero, negativo, vírgula inválida, excesso de casas e limite da ADR-046 sem usar ponto flutuante.
+2. Testar no hook que um retry da mesma intenção reutiliza a chave e que edição de campo ou troca de household gera nova chave; falha ambígua mantém os dados até confirmação.
+3. No caminho navegador → `/api` → API → PostgreSQL, criar conta em A, confirmar uma única conta após retry com resposta perdida, atualizar a lista e verificar que `VIEWER`, sessão revogada e household B não criam nem revelam conta de A. Testar `400/401/403/404/409` relevantes e `no-store`.
+4. Rodar lint, tipos, formatação, teste web direcionado, E2E integrado e `contract:check`; revisar independentemente autorização, idempotência e limites do navegador. Atualizar guia da aplicação, README web e quadro da sprint na mesma mudança.
+
+## Pendências e conceitos para estudo
+
+A escolha do primeiro comando e o fluxo de retry da web aguardam aprovação. O contrato da API e a regra do marco da ADR-046 permanecem aceitos. Depois deste recorte, escolher receita/despesa/transferência para a interface e decidir, em trabalho próprio, edição do marco, persistência segura de intenção entre recargas, fuso de produto, RLS real e proxy/cache de staging. Conceitos: idempotência de comando, resposta ambígua, fronteira de autorização, data civil, conversão decimal exata e separação entre marco patrimonial e receita.
