@@ -35,6 +35,15 @@ Para o ensaio Nginx local, execute em `prumo-api/` `pnpm build` e `node test/edg
 
 Para limpar dados vencidos no banco local, rode `pnpm --filter prumo-api db:prune-identity` na raiz após `build` e `db:prepare-app`. O comando exige `PRUMO_APP_DATABASE_URL` da role `prumo_app` em `127.0.0.1/prumo_dev`, não aceita argumentos e informa somente contagens. Ele apaga sessões com `expires_at` anterior ao momento da execução e contadores de login/recuperação com início de janela anterior a 24 horas; também descarta payload cifrado da outbox de e-mail vencida, exclui registros sem payload da outbox criados há mais de sete dias, remove tentativas de emissão de e-mail com mais de 48 horas e remove desafios e solicitações de e-mail vencidos. Não há agendamento automático; a execução diária do piloto externo ainda depende da hospedagem.
 
-Da raiz, `pnpm --filter prumo-api lint`, `typecheck`, `test`, `test:e2e`, `test:db` e `build` são verificações direcionadas. O E2E inclui um teste de proxy HTTPS local com build de produção do Next.js, `openssl`, cache compartilhado simulado e duas contas descartáveis; cobre sessão, troca de senha, recuperação por código e renderização isolada de `/conta`. Exige o PostgreSQL local migrado e a role da aplicação preparada. Para executá-lo isoladamente, em `prumo-api/` rode `pnpm exec vitest run --config ./vitest.config.e2e.ts test/https-proxy.e2e-spec.ts`. Após alterar respostas HTTP, gere o contrato com `pnpm contract:generate` e valide `pnpm contract:check` e a web. Retificação financeira geral, integração web e a decisão final de RLS seguem pendentes.
+Da raiz, `pnpm --filter prumo-api lint`, `typecheck`, `test`, `test:e2e`, `test:db` e `build` são verificações direcionadas. O E2E inclui um teste de proxy HTTPS local com build de produção do Next.js, `openssl`, cache compartilhado simulado e duas contas descartáveis; cobre sessão, troca de senha, recuperação por código, renderização isolada de `/conta` e leitura financeira de `/financas`. Exige o PostgreSQL local migrado e a role da aplicação preparada. Para executar o formulário de login em Chromium no mesmo teste, instale o navegador no diretório do projeto e rode o arquivo direcionado:
+
+```bash
+# Na raiz do repositório
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" pnpm --filter prumo-api exec playwright install chromium
+# Em prumo-api/
+PRUMO_BROWSER_E2E=1 PLAYWRIGHT_BROWSERS_PATH=../.playwright-browsers pnpm exec vitest run --config ./vitest.config.e2e.ts test/https-proxy.e2e-spec.ts
+```
+
+A execução direta requer as bibliotecas de sistema do Chromium; nesta distro WSL faltou `libnspr4.so`, e o gate foi validado em contêiner Playwright sem instalar pacotes do sistema. A CI instala Chromium e ativa `PRUMO_BROWSER_E2E` na suíte E2E; seu resultado ainda precisa ser conferido. Após alterar respostas HTTP, gere o contrato com `pnpm contract:generate` e valide `pnpm contract:check` e a web. Retificação financeira geral, integração web de comandos e a decisão final de RLS seguem pendentes.
 
 Propósito, regras e execução completa estão no [Guia da aplicação](../docs/application/GUIA_DA_APLICACAO.md). O bootstrap está em [BOOTSTRAP_SPRINT_3](../docs/operations/BOOTSTRAP_SPRINT_3.md) e as instruções de trabalho em `../AGENTS.md`.

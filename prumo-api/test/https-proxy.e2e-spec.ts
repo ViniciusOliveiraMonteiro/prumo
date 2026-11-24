@@ -20,6 +20,7 @@ import { PasswordHasher } from '@nestjs/authentication';
 import { Test } from '@nestjs/testing';
 import { config } from 'dotenv';
 import pg from 'pg';
+import { chromium } from 'playwright';
 import { AppModule } from '../src/app.module.js';
 import { configureHttp } from '../src/http/configure-http.js';
 import type { INestApplication } from '@nestjs/common';
@@ -50,620 +51,799 @@ async function freePort(): Promise<number> {
   return address.port;
 }
 
-test('preserves private sessions and no-store through HTTPS and the Next rewrite', async () => {
-  const temporary = mkdtempSync(join(tmpdir(), 'prumo-https-'));
-  const key = join(temporary, 'key.pem');
-  const certificate = join(temporary, 'cert.pem');
-  const previousOrigin = process.env.PRUMO_PUBLIC_ORIGIN;
-  const tsconfig = join(webDir, 'tsconfig.json');
-  const tsconfigBefore = readFileSync(tsconfig);
-  let app: INestApplication | undefined;
-  let next: ChildProcess | undefined;
-  let nextOutput = '';
-  let proxy: ReturnType<typeof createHttpsServer> | undefined;
-  let invitationHouseholdId: string | undefined;
-  const sharedCache = new Map<
-    string,
-    { status: number; headers: IncomingHttpHeaders; body: Buffer }
-  >();
-  let cacheHits = 0;
-  let probeBuilds = 0;
-  const sendCachedResponse = (
-    key: string,
-    status: number,
-    headers: IncomingHttpHeaders,
-    body: Buffer,
-    outgoing: ServerResponse,
-  ) => {
-    const cacheControl = String(headers['cache-control'] ?? '').toLowerCase();
-    if (
-      !/\b(?:no-store|no-cache|private)\b/.test(cacheControl) &&
-      !headers['set-cookie']
-    ) {
-      sharedCache.set(key, { status, headers, body });
-    }
-    outgoing.writeHead(status, headers);
-    outgoing.end(body);
-  };
-  try {
-    execFileSync(
-      'openssl',
-      [
-        'req',
-        '-x509',
-        '-newkey',
-        'rsa:2048',
-        '-nodes',
-        '-days',
-        '1',
-        '-subj',
-        '/CN=localhost',
-        '-addext',
-        'subjectAltName=DNS:localhost',
-        '-keyout',
-        key,
-        '-out',
-        certificate,
-      ],
-      { stdio: 'ignore' },
-    );
-    const webPort = await freePort();
-    const tlsPort = await freePort();
-    process.env.PRUMO_PUBLIC_ORIGIN = `https://localhost:${tlsPort}`;
-
-    const passwordHash = await new PasswordHasher({ logN: 10 }).hash(
-      people[0].password,
-    );
-    for (const person of people) {
-      const hash =
-        person === people[0]
-          ? passwordHash
-          : await new PasswordHasher({ logN: 10 }).hash(person.password);
-      const inserted = await admin.query<{ id: string }>(
-        'INSERT INTO identity.users(email, email_normalized, password_hash) VALUES ($1, $2, $3) RETURNING id',
-        [person.email, person.email, hash],
-      );
-      person.id = inserted.rows[0].id;
-    }
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    configureHttp(app);
-    await app.listen(0, '127.0.0.1');
-    const apiPort = (app.getHttpServer().address() as { port: number }).port;
-    const nextEnv = {
-      ...process.env,
-      PRUMO_API_INTERNAL_ORIGIN: `http://127.0.0.1:${apiPort}`,
+test(
+  'preserves private sessions and no-store through HTTPS and the Next rewrite',
+  async () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'prumo-https-'));
+    const key = join(temporary, 'key.pem');
+    const certificate = join(temporary, 'cert.pem');
+    const previousOrigin = process.env.PRUMO_PUBLIC_ORIGIN;
+    const tsconfig = join(webDir, 'tsconfig.json');
+    const tsconfigBefore = readFileSync(tsconfig);
+    let app: INestApplication | undefined;
+    let next: ChildProcess | undefined;
+    let nextOutput = '';
+    let proxy: ReturnType<typeof createHttpsServer> | undefined;
+    let invitationHouseholdId: string | undefined;
+    let secondHouseholdId: string | undefined;
+    const sharedCache = new Map<
+      string,
+      { status: number; headers: IncomingHttpHeaders; body: Buffer }
+    >();
+    let cacheHits = 0;
+    let probeBuilds = 0;
+    const sendCachedResponse = (
+      key: string,
+      status: number,
+      headers: IncomingHttpHeaders,
+      body: Buffer,
+      outgoing: ServerResponse,
+    ) => {
+      const cacheControl = String(headers['cache-control'] ?? '').toLowerCase();
+      if (
+        !/\b(?:no-store|no-cache|private)\b/.test(cacheControl) &&
+        !headers['set-cookie']
+      ) {
+        sharedCache.set(key, { status, headers, body });
+      }
+      outgoing.writeHead(status, headers);
+      outgoing.end(body);
     };
-    execFileSync('pnpm', ['build'], {
-      cwd: webDir,
-      env: nextEnv,
-      stdio: 'ignore',
-    });
-    next = spawn(
-      process.execPath,
-      [
-        'node_modules/next/dist/bin/next',
-        'start',
-        '-p',
-        String(webPort),
-        '-H',
-        '127.0.0.1',
-      ],
-      {
+    try {
+      execFileSync(
+        'openssl',
+        [
+          'req',
+          '-x509',
+          '-newkey',
+          'rsa:2048',
+          '-nodes',
+          '-days',
+          '1',
+          '-subj',
+          '/CN=localhost',
+          '-addext',
+          'subjectAltName=DNS:localhost',
+          '-keyout',
+          key,
+          '-out',
+          certificate,
+        ],
+        { stdio: 'ignore' },
+      );
+      const webPort = await freePort();
+      const tlsPort = await freePort();
+      process.env.PRUMO_PUBLIC_ORIGIN = `https://localhost:${tlsPort}`;
+
+      const passwordHash = await new PasswordHasher({ logN: 10 }).hash(
+        people[0].password,
+      );
+      for (const person of people) {
+        const hash =
+          person === people[0]
+            ? passwordHash
+            : await new PasswordHasher({ logN: 10 }).hash(person.password);
+        const inserted = await admin.query<{ id: string }>(
+          'INSERT INTO identity.users(email, email_normalized, password_hash) VALUES ($1, $2, $3) RETURNING id',
+          [person.email, person.email, hash],
+        );
+        person.id = inserted.rows[0].id;
+      }
+
+      const moduleRef = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
+      app = moduleRef.createNestApplication();
+      configureHttp(app);
+      await app.listen(0, '127.0.0.1');
+      const apiPort = (app.getHttpServer().address() as { port: number }).port;
+      const nextEnv = {
+        ...process.env,
+        PRUMO_API_INTERNAL_ORIGIN: `http://127.0.0.1:${apiPort}`,
+      };
+      execFileSync('pnpm', ['build'], {
         cwd: webDir,
         env: nextEnv,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    );
-    next.stdout?.on('data', (chunk: Buffer) => {
-      nextOutput += chunk.toString();
-    });
-    next.stderr?.on('data', (chunk: Buffer) => {
-      nextOutput += chunk.toString();
-    });
-    proxy = createHttpsServer(
-      { key: readFileSync(key), cert: readFileSync(certificate) },
-      (incoming, outgoing) => {
-        const cacheKey =
-          incoming.method === 'GET' &&
-          (incoming.url === '/api/auth/me' ||
-            incoming.url === '/api/auth/email-status' ||
-            incoming.url === '/api/auth/invitations' ||
-            incoming.url?.split('?')[0] === '/conta' ||
-            incoming.url === '/__cache_probe')
-            ? incoming.url
-            : undefined;
-        const cached = cacheKey ? sharedCache.get(cacheKey) : undefined;
-        if (cached) {
-          cacheHits += 1;
-          outgoing.writeHead(cached.status, cached.headers);
-          outgoing.end(cached.body);
-          return;
-        }
-        if (cacheKey === '/__cache_probe') {
-          probeBuilds += 1;
-          sendCachedResponse(
-            cacheKey,
-            200,
-            { 'cache-control': 'public, max-age=60' },
-            Buffer.from(String(probeBuilds)),
-            outgoing,
-          );
-          return;
-        }
-        const headers = { ...incoming.headers };
-        delete headers['x-forwarded-host'];
-        delete headers['x-forwarded-proto'];
-        headers['x-forwarded-proto'] = 'https';
-        const upstream = httpRequest(
-          {
-            hostname: '127.0.0.1',
-            port: webPort,
-            path: incoming.url,
-            method: incoming.method,
-            headers,
-          },
-          (response) => {
-            if (!cacheKey) {
-              outgoing.writeHead(response.statusCode ?? 502, response.headers);
-              response.pipe(outgoing);
-              return;
-            }
-            const chunks: Buffer[] = [];
-            response.on('data', (chunk: Buffer) => chunks.push(chunk));
-            response.on('end', () => {
-              sendCachedResponse(
-                cacheKey,
-                response.statusCode ?? 502,
-                response.headers,
-                Buffer.concat(chunks),
-                outgoing,
-              );
-            });
-          },
-        );
-        upstream.on('error', () => {
-          outgoing.writeHead(502);
-          outgoing.end();
-        });
-        incoming.pipe(upstream);
-      },
-    );
-    await new Promise<void>((resolveReady) =>
-      proxy!.listen(tlsPort, '127.0.0.1', resolveReady),
-    );
-
-    const call = async (
-      path: string,
-      method = 'GET',
-      body?: object,
-      cookie?: string,
-      origin?: string,
-      extraHeaders?: Record<string, string>,
-    ) => {
-      const payload = body ? JSON.stringify(body) : undefined;
-      return new Promise<{
-        status: number;
-        headers: Record<string, string | string[] | undefined>;
-        body: string;
-      }>((resolveResponse, reject) => {
-        const request = httpsRequest(
-          {
-            hostname: 'localhost',
-            family: 4,
-            port: tlsPort,
-            path,
-            method,
-            ca: readFileSync(certificate),
-            headers: {
-              ...(payload ? { 'content-type': 'application/json' } : {}),
-              ...(cookie ? { cookie } : {}),
-              ...(origin ? { origin } : {}),
-              ...extraHeaders,
-            },
-          },
-          (response) => {
-            const chunks: Buffer[] = [];
-            response.on('data', (chunk: Buffer) => chunks.push(chunk));
-            response.on('end', () =>
-              resolveResponse({
-                status: response.statusCode ?? 0,
-                headers: response.headers,
-                body: Buffer.concat(chunks).toString(),
-              }),
-            );
-          },
-        );
-        request.on('error', reject);
-        request.end(payload);
+        stdio: 'ignore',
       });
-    };
-
-    let ready = false;
-    let lastReadiness = '';
-    for (let attempt = 0; attempt < 60; attempt++) {
-      if (next.exitCode !== null)
-        throw new Error('Next.js exited before readiness');
-      try {
-        const response = await call('/api/health');
-        lastReadiness = String(response.status);
-        if (response.status === 200) {
-          ready = true;
-          break;
-        }
-      } catch (error) {
-        lastReadiness = String(error);
-      }
-      await delay(500);
-    }
-    if (!ready)
-      throw new Error(
-        `Next rewrite unavailable: ${lastReadiness}; Next: ${nextOutput.slice(-1000)}`,
+      next = spawn(
+        process.execPath,
+        [
+          'node_modules/next/dist/bin/next',
+          'start',
+          '-p',
+          String(webPort),
+          '-H',
+          '127.0.0.1',
+        ],
+        {
+          cwd: webDir,
+          env: nextEnv,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
       );
-    expect((await call('/__cache_probe')).body).toBe('1');
-    expect((await call('/__cache_probe')).body).toBe('1');
-    expect(probeBuilds).toBe(1);
-    expect(cacheHits).toBe(1);
-    sharedCache.clear();
-    cacheHits = 0;
+      next.stdout?.on('data', (chunk: Buffer) => {
+        nextOutput += chunk.toString();
+      });
+      next.stderr?.on('data', (chunk: Buffer) => {
+        nextOutput += chunk.toString();
+      });
+      proxy = createHttpsServer(
+        { key: readFileSync(key), cert: readFileSync(certificate) },
+        (incoming, outgoing) => {
+          const cacheKey =
+            incoming.method === 'GET' &&
+            (incoming.url === '/api/auth/me' ||
+              incoming.url === '/api/auth/email-status' ||
+              incoming.url === '/api/auth/invitations' ||
+              incoming.url?.split('?')[0] === '/conta' ||
+              incoming.url?.split('?')[0] === '/financas' ||
+              incoming.url === '/__cache_probe')
+              ? incoming.url
+              : undefined;
+          const cached = cacheKey ? sharedCache.get(cacheKey) : undefined;
+          if (cached) {
+            cacheHits += 1;
+            outgoing.writeHead(cached.status, cached.headers);
+            outgoing.end(cached.body);
+            return;
+          }
+          if (cacheKey === '/__cache_probe') {
+            probeBuilds += 1;
+            sendCachedResponse(
+              cacheKey,
+              200,
+              { 'cache-control': 'public, max-age=60' },
+              Buffer.from(String(probeBuilds)),
+              outgoing,
+            );
+            return;
+          }
+          const headers = { ...incoming.headers };
+          delete headers['x-forwarded-host'];
+          delete headers['x-forwarded-proto'];
+          headers['x-forwarded-proto'] = 'https';
+          const upstream = httpRequest(
+            {
+              hostname: '127.0.0.1',
+              port: webPort,
+              path: incoming.url,
+              method: incoming.method,
+              headers,
+            },
+            (response) => {
+              if (!cacheKey) {
+                outgoing.writeHead(
+                  response.statusCode ?? 502,
+                  response.headers,
+                );
+                response.pipe(outgoing);
+                return;
+              }
+              const chunks: Buffer[] = [];
+              response.on('data', (chunk: Buffer) => chunks.push(chunk));
+              response.on('end', () => {
+                sendCachedResponse(
+                  cacheKey,
+                  response.statusCode ?? 502,
+                  response.headers,
+                  Buffer.concat(chunks),
+                  outgoing,
+                );
+              });
+            },
+          );
+          upstream.on('error', () => {
+            outgoing.writeHead(502);
+            outgoing.end();
+          });
+          incoming.pipe(upstream);
+        },
+      );
+      await new Promise<void>((resolveReady) =>
+        proxy!.listen(tlsPort, '127.0.0.1', resolveReady),
+      );
 
-    const signIn = async (
-      person: (typeof people)[number],
-      password = person.password,
-    ) => {
-      const response = await call(
-        '/api/auth/sign-in',
+      const call = async (
+        path: string,
+        method = 'GET',
+        body?: object,
+        cookie?: string,
+        origin?: string,
+        extraHeaders?: Record<string, string>,
+      ) => {
+        const payload = body ? JSON.stringify(body) : undefined;
+        return new Promise<{
+          status: number;
+          headers: Record<string, string | string[] | undefined>;
+          body: string;
+        }>((resolveResponse, reject) => {
+          const request = httpsRequest(
+            {
+              hostname: 'localhost',
+              family: 4,
+              port: tlsPort,
+              path,
+              method,
+              ca: readFileSync(certificate),
+              headers: {
+                ...(payload ? { 'content-type': 'application/json' } : {}),
+                ...(cookie ? { cookie } : {}),
+                ...(origin ? { origin } : {}),
+                ...extraHeaders,
+              },
+            },
+            (response) => {
+              const chunks: Buffer[] = [];
+              response.on('data', (chunk: Buffer) => chunks.push(chunk));
+              response.on('end', () =>
+                resolveResponse({
+                  status: response.statusCode ?? 0,
+                  headers: response.headers,
+                  body: Buffer.concat(chunks).toString(),
+                }),
+              );
+            },
+          );
+          request.on('error', reject);
+          request.end(payload);
+        });
+      };
+
+      let ready = false;
+      let lastReadiness = '';
+      for (let attempt = 0; attempt < 60; attempt++) {
+        if (next.exitCode !== null)
+          throw new Error('Next.js exited before readiness');
+        try {
+          const response = await call('/api/health');
+          lastReadiness = String(response.status);
+          if (response.status === 200) {
+            ready = true;
+            break;
+          }
+        } catch (error) {
+          lastReadiness = String(error);
+        }
+        await delay(500);
+      }
+      if (!ready)
+        throw new Error(
+          `Next rewrite unavailable: ${lastReadiness}; Next: ${nextOutput.slice(-1000)}`,
+        );
+      expect((await call('/__cache_probe')).body).toBe('1');
+      expect((await call('/__cache_probe')).body).toBe('1');
+      expect(probeBuilds).toBe(1);
+      expect(cacheHits).toBe(1);
+      sharedCache.clear();
+      cacheHits = 0;
+
+      const signIn = async (
+        person: (typeof people)[number],
+        password = person.password,
+      ) => {
+        const response = await call(
+          '/api/auth/sign-in',
+          'POST',
+          {
+            email: person.email,
+            password,
+          },
+          undefined,
+          process.env.PRUMO_PUBLIC_ORIGIN,
+        );
+        expect(response.status).toBe(200);
+        expect(response.headers['cache-control']).toBe('no-store');
+        expect(response.headers['set-cookie']?.[0]).toContain('__Host-sid=');
+        expect(response.headers['set-cookie']?.[0]).toContain('HttpOnly');
+        expect(response.headers['set-cookie']?.[0]).toContain('Secure');
+        expect(response.headers['set-cookie']?.[0]).toContain('SameSite=Lax');
+        expect(response.headers['set-cookie']?.[0]).toContain('Path=/');
+        expect(response.headers['set-cookie']?.[0]).not.toContain('Domain=');
+        return response.headers['set-cookie']![0].split(';', 1)[0];
+      };
+      const firstCookie = await signIn(people[0]);
+      const secondCookie = await signIn(people[1]);
+      for (const [person, cookie, other] of [
+        [people[0], firstCookie, people[1]],
+        [people[1], secondCookie, people[0]],
+      ] as const) {
+        const page = await call('/conta', 'GET', undefined, cookie);
+        expect(page.status).toBe(200);
+        expect(page.headers['cache-control']).toContain('no-store');
+        expect(page.body).toContain(person.email);
+        expect(page.body).not.toContain(other.email);
+      }
+      const anonymousPage = await call('/conta');
+      expect(anonymousPage.status).toBe(200);
+      expect(anonymousPage.headers['cache-control']).toContain('no-store');
+      expect(anonymousPage.body).toContain('Você não está conectado.');
+      expect(anonymousPage.body).not.toContain(people[0].email);
+      expect(anonymousPage.body).not.toContain(people[1].email);
+      const callFlight = async (cookie?: string) => {
+        let path = '/conta';
+        for (let redirect = 0; redirect < 3; redirect++) {
+          const response = await call(
+            path,
+            'GET',
+            undefined,
+            cookie,
+            undefined,
+            {
+              RSC: '1',
+            },
+          );
+          expect(response.headers['cache-control']).toContain('no-store');
+          if (response.status !== 307) return response;
+          const location = response.headers.location;
+          if (
+            typeof location !== 'string' ||
+            !/^\/conta(?:\?|$)/.test(location)
+          )
+            throw new Error('Unexpected RSC redirect');
+          path = location;
+        }
+        throw new Error('RSC redirect limit exceeded');
+      };
+      for (const [person, cookie, other] of [
+        [people[0], firstCookie, people[1]],
+        [people[1], secondCookie, people[0]],
+      ] as const) {
+        const flight = await callFlight(cookie);
+        expect(flight.status).toBe(200);
+        expect(flight.body).toContain(person.email);
+        expect(flight.body).not.toContain(other.email);
+      }
+      const anonymousFlight = await callFlight();
+      expect(anonymousFlight.status).toBe(200);
+      expect(anonymousFlight.body).not.toContain(people[0].email);
+      expect(anonymousFlight.body).not.toContain(people[1].email);
+      expect(sharedCache.size).toBe(0);
+      expect(cacheHits).toBe(0);
+      for (const [person, cookie] of [
+        [people[0], firstCookie],
+        [people[1], secondCookie],
+      ] as const) {
+        const me = await call('/api/auth/me', 'GET', undefined, cookie);
+        expect(me.status).toBe(200);
+        expect(me.headers['cache-control']).toBe('no-store');
+        expect(JSON.parse(me.body)).toEqual({
+          id: person.id,
+          email: person.email,
+        });
+      }
+      const anonymous = await call('/api/auth/me');
+      expect(anonymous.status).toBe(401);
+      expect(anonymous.headers['cache-control']).toBe('no-store');
+      expect(sharedCache.size).toBe(0);
+      expect(cacheHits).toBe(0);
+      for (const cookie of [firstCookie, secondCookie]) {
+        const emailStatus = await call(
+          '/api/auth/email-status',
+          'GET',
+          undefined,
+          cookie,
+        );
+        expect(emailStatus.status).toBe(503);
+        expect(emailStatus.headers['cache-control']).toBe('no-store');
+      }
+      const hostileEmailRequest = await call(
+        '/api/auth/email-verification',
+        'POST',
+        {},
+        firstCookie,
+        'https://foreign.test',
+      );
+      expect(hostileEmailRequest.status).toBe(403);
+      const disabledEmailRequest = await call(
+        '/api/auth/email-verification',
+        'POST',
+        {},
+        firstCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(disabledEmailRequest.status).toBe(503);
+      expect(disabledEmailRequest.headers['cache-control']).toBe('no-store');
+      expect(sharedCache.size).toBe(0);
+      expect(cacheHits).toBe(0);
+      const createdHousehold = await call(
+        '/api/households',
+        'POST',
+        { name: 'Proxy invitation test' },
+        firstCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(createdHousehold.status).toBe(201);
+      invitationHouseholdId = (
+        JSON.parse(createdHousehold.body) as { id: string }
+      ).id;
+      expect(createdHousehold.headers['cache-control']).toBe('no-store');
+      const secondHousehold = await call(
+        '/api/households',
+        'POST',
+        { name: 'Second finance household' },
+        secondCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(secondHousehold.status).toBe(201);
+      secondHouseholdId = (JSON.parse(secondHousehold.body) as { id: string })
+        .id;
+      for (const [householdId, cookie, name, cents] of [
+        [invitationHouseholdId, firstCookie, 'Conta da primeira casa', '12345'],
+        [secondHouseholdId, secondCookie, 'Conta da segunda casa', '-500'],
+      ] as const) {
+        const account = await call(
+          `/api/households/${householdId}/accounts`,
+          'POST',
+          {
+            name,
+            currency: 'BRL',
+            openingDate: '2026-01-01',
+            openingBalanceCents: cents,
+          },
+          cookie,
+          process.env.PRUMO_PUBLIC_ORIGIN,
+          { 'Idempotency-Key': randomUUID() },
+        );
+        expect(account.status).toBe(201);
+      }
+      if (process.env.PRUMO_BROWSER_E2E === '1') {
+        const browser = await chromium.launch();
+        try {
+          const context = await browser.newContext({ ignoreHTTPSErrors: true });
+          const page = await context.newPage();
+          const browserRequests: string[] = [];
+          page.on('request', (request) => browserRequests.push(request.url()));
+          await page.goto(`${process.env.PRUMO_PUBLIC_ORIGIN}/entrar`);
+          await page.getByLabel('E-mail').fill(people[0].email);
+          await page.getByLabel('Senha').fill(people[0].password);
+          await page.getByRole('button', { name: 'Entrar' }).click();
+          await page.waitForURL('**/financas');
+          await page
+            .getByRole('link', { name: 'Proxy invitation test' })
+            .click();
+          await page.getByLabel('Saldo em').fill('2026-02-01');
+          await page.getByRole('button', { name: 'Consultar' }).click();
+          await page.getByText('R$ 123,45').waitFor();
+          expect(await page.getByText('Conta da primeira casa').count()).toBe(
+            1,
+          );
+          expect(await page.getByText('Conta da segunda casa').count()).toBe(0);
+          const sessionCookies = await context.cookies();
+          expect(
+            sessionCookies.some(
+              (cookie) =>
+                cookie.name === '__Host-sid' &&
+                cookie.secure &&
+                cookie.httpOnly &&
+                cookie.sameSite === 'Lax',
+            ),
+          ).toBe(true);
+          expect(
+            browserRequests.every(
+              (url) => new URL(url).origin === process.env.PRUMO_PUBLIC_ORIGIN,
+            ),
+          ).toBe(true);
+        } finally {
+          await browser.close();
+        }
+      }
+      const financePage = async (householdId: string, cookie?: string) => {
+        const page = await call(
+          `/financas?household=${householdId}&date=2026-02-01`,
+          'GET',
+          undefined,
+          cookie,
+        );
+        expect(page.status).toBe(200);
+        expect(page.headers['cache-control']).toContain('private');
+        expect(page.headers['cache-control']).toContain('no-store');
+        return page.body;
+      };
+      const firstFinance = await financePage(
+        invitationHouseholdId,
+        firstCookie,
+      );
+      expect(firstFinance).toContain('Conta da primeira casa');
+      expect(firstFinance).toContain('R$ 123,45');
+      expect(firstFinance).not.toContain('Conta da segunda casa');
+      const forgedSelector = await financePage(
+        invitationHouseholdId,
+        secondCookie,
+      );
+      expect(forgedSelector).toContain('Second finance household');
+      expect(forgedSelector).not.toContain('Conta da primeira casa');
+      const secondFinance = await financePage(secondHouseholdId, secondCookie);
+      expect(secondFinance).toContain('Conta da segunda casa');
+      expect(secondFinance).toContain('saldo negativo');
+      expect(secondFinance).not.toContain('Conta da primeira casa');
+      let flightPath = `/financas?household=${secondHouseholdId}&date=2026-02-01&_rsc=finance`;
+      let secondFlight: Awaited<ReturnType<typeof call>> | undefined;
+      for (let redirect = 0; redirect < 3; redirect++) {
+        secondFlight = await call(
+          flightPath,
+          'GET',
+          undefined,
+          secondCookie,
+          undefined,
+          { RSC: '1' },
+        );
+        expect(secondFlight.headers['cache-control']).toContain('no-store');
+        if (secondFlight.status !== 307) break;
+        const location = secondFlight.headers.location;
+        if (
+          typeof location !== 'string' ||
+          !/^\/financas(?:\?|$)/.test(location)
+        )
+          throw new Error('Unexpected finance RSC redirect');
+        flightPath = location;
+      }
+      if (!secondFlight) throw new Error('Finance RSC request was not sent');
+      expect(secondFlight.status).toBe(200);
+      expect(secondFlight.body).toContain('Conta da segunda casa');
+      expect(secondFlight.body).not.toContain('Conta da primeira casa');
+      const anonymousFinance = await financePage(invitationHouseholdId);
+      expect(anonymousFinance).toContain('Entre para ver as contas');
+      expect(anonymousFinance).not.toContain('Conta da primeira casa');
+      expect(sharedCache.size).toBe(0);
+      expect(cacheHits).toBe(0);
+      const invited = await call(
+        `/api/households/${invitationHouseholdId}/invitations`,
+        'POST',
+        { inviteeUserId: people[1].id },
+        firstCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(invited.status).toBe(202);
+      expect(invited.headers['cache-control']).toBe('no-store');
+      const invitationId = (JSON.parse(invited.body) as { requestId: string })
+        .requestId;
+      const firstInbox = await call(
+        '/api/auth/invitations',
+        'GET',
+        undefined,
+        firstCookie,
+      );
+      const secondInbox = await call(
+        '/api/auth/invitations',
+        'GET',
+        undefined,
+        secondCookie,
+      );
+      expect(firstInbox.status).toBe(200);
+      expect(JSON.parse(firstInbox.body)).toEqual([]);
+      expect(secondInbox.status).toBe(200);
+      expect(secondInbox.headers['cache-control']).toBe('no-store');
+      expect(JSON.parse(secondInbox.body)).toEqual([
+        expect.objectContaining({
+          id: invitationId,
+          householdId: invitationHouseholdId,
+        }),
+      ]);
+      expect(sharedCache.size).toBe(0);
+      expect(cacheHits).toBe(0);
+      const hostileAccept = await call(
+        `/api/auth/invitations/${invitationId}/accept`,
+        'POST',
+        undefined,
+        secondCookie,
+        'https://foreign.test',
+      );
+      expect(hostileAccept.status).toBe(403);
+      const beforeAccept = await call(
+        `/api/households/${invitationHouseholdId}`,
+        'GET',
+        undefined,
+        secondCookie,
+      );
+      expect(beforeAccept.status).toBe(404);
+      const accepted = await call(
+        `/api/auth/invitations/${invitationId}/accept`,
+        'POST',
+        undefined,
+        secondCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(accepted.status).toBe(204);
+      expect(accepted.headers['cache-control']).toBe('no-store');
+      const afterAccept = await call(
+        `/api/households/${invitationHouseholdId}`,
+        'GET',
+        undefined,
+        secondCookie,
+      );
+      expect(afterAccept.status).toBe(200);
+      const hostile = await call(
+        '/api/auth/sign-out',
+        'POST',
+        undefined,
+        firstCookie,
+        'https://foreign.test',
+      );
+      expect(hostile.status).toBe(403);
+      const signOut = await call(
+        '/api/auth/sign-out',
+        'POST',
+        undefined,
+        firstCookie,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(signOut.status).toBe(204);
+      expect(
+        (await call('/api/auth/me', 'GET', undefined, firstCookie)).status,
+      ).toBe(401);
+      const revokedPage = await call('/conta', 'GET', undefined, firstCookie);
+      expect(revokedPage.status).toBe(200);
+      expect(revokedPage.body).toContain('Você não está conectado.');
+      expect(revokedPage.body).not.toContain(people[0].email);
+      const revokedFinance = await financePage(
+        invitationHouseholdId,
+        firstCookie,
+      );
+      expect(revokedFinance).toContain('Entre para ver as contas');
+      expect(revokedFinance).not.toContain('Conta da primeira casa');
+      expect(
+        (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
+      ).toBe(200);
+
+      const beforeChange = await signIn(people[0]);
+      const issued = await call(
+        '/api/auth/recovery-codes',
+        'POST',
+        { currentPassword: people[0].password },
+        beforeChange,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(issued.status).toBe(201);
+      expect(issued.headers['cache-control']).toBe('no-store');
+      const previousCode = (JSON.parse(issued.body) as { codes: string[] })
+        .codes[0];
+      const changedPassword = `changed-${randomUUID()}`;
+      const hostileChange = await call(
+        '/api/auth/change-password',
+        'POST',
+        { currentPassword: people[0].password, newPassword: changedPassword },
+        beforeChange,
+        'https://foreign.test',
+      );
+      expect(hostileChange.status).toBe(403);
+      const changed = await call(
+        '/api/auth/change-password',
+        'POST',
+        { currentPassword: people[0].password, newPassword: changedPassword },
+        beforeChange,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(changed.status).toBe(204);
+      expect(changed.headers['cache-control']).toBe('no-store');
+      expect(
+        (await call('/api/auth/me', 'GET', undefined, beforeChange)).status,
+      ).toBe(401);
+      expect(
+        (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
+      ).toBe(200);
+      const staleCode = await call(
+        '/api/auth/recover-with-code',
         'POST',
         {
-          email: person.email,
-          password,
+          email: people[0].email,
+          code: previousCode,
+          newPassword: `unused-${randomUUID()}`,
         },
         undefined,
         process.env.PRUMO_PUBLIC_ORIGIN,
       );
-      expect(response.status).toBe(200);
-      expect(response.headers['cache-control']).toBe('no-store');
-      expect(response.headers['set-cookie']?.[0]).toContain('__Host-sid=');
-      expect(response.headers['set-cookie']?.[0]).toContain('HttpOnly');
-      expect(response.headers['set-cookie']?.[0]).toContain('Secure');
-      expect(response.headers['set-cookie']?.[0]).toContain('SameSite=Lax');
-      expect(response.headers['set-cookie']?.[0]).toContain('Path=/');
-      expect(response.headers['set-cookie']?.[0]).not.toContain('Domain=');
-      return response.headers['set-cookie']![0].split(';', 1)[0];
-    };
-    const firstCookie = await signIn(people[0]);
-    const secondCookie = await signIn(people[1]);
-    for (const [person, cookie, other] of [
-      [people[0], firstCookie, people[1]],
-      [people[1], secondCookie, people[0]],
-    ] as const) {
-      const page = await call('/conta', 'GET', undefined, cookie);
-      expect(page.status).toBe(200);
-      expect(page.headers['cache-control']).toContain('no-store');
-      expect(page.body).toContain(person.email);
-      expect(page.body).not.toContain(other.email);
-    }
-    const anonymousPage = await call('/conta');
-    expect(anonymousPage.status).toBe(200);
-    expect(anonymousPage.headers['cache-control']).toContain('no-store');
-    expect(anonymousPage.body).toContain('Você não está conectado.');
-    expect(anonymousPage.body).not.toContain(people[0].email);
-    expect(anonymousPage.body).not.toContain(people[1].email);
-    const callFlight = async (cookie?: string) => {
-      let path = '/conta';
-      for (let redirect = 0; redirect < 3; redirect++) {
-        const response = await call(path, 'GET', undefined, cookie, undefined, {
-          RSC: '1',
-        });
-        expect(response.headers['cache-control']).toContain('no-store');
-        if (response.status !== 307) return response;
-        const location = response.headers.location;
-        if (typeof location !== 'string' || !/^\/conta(?:\?|$)/.test(location))
-          throw new Error('Unexpected RSC redirect');
-        path = location;
-      }
-      throw new Error('RSC redirect limit exceeded');
-    };
-    for (const [person, cookie, other] of [
-      [people[0], firstCookie, people[1]],
-      [people[1], secondCookie, people[0]],
-    ] as const) {
-      const flight = await callFlight(cookie);
-      expect(flight.status).toBe(200);
-      expect(flight.body).toContain(person.email);
-      expect(flight.body).not.toContain(other.email);
-    }
-    const anonymousFlight = await callFlight();
-    expect(anonymousFlight.status).toBe(200);
-    expect(anonymousFlight.body).not.toContain(people[0].email);
-    expect(anonymousFlight.body).not.toContain(people[1].email);
-    expect(sharedCache.size).toBe(0);
-    expect(cacheHits).toBe(0);
-    for (const [person, cookie] of [
-      [people[0], firstCookie],
-      [people[1], secondCookie],
-    ] as const) {
-      const me = await call('/api/auth/me', 'GET', undefined, cookie);
-      expect(me.status).toBe(200);
-      expect(me.headers['cache-control']).toBe('no-store');
-      expect(JSON.parse(me.body)).toEqual({
-        id: person.id,
-        email: person.email,
-      });
-    }
-    const anonymous = await call('/api/auth/me');
-    expect(anonymous.status).toBe(401);
-    expect(anonymous.headers['cache-control']).toBe('no-store');
-    expect(sharedCache.size).toBe(0);
-    expect(cacheHits).toBe(0);
-    for (const cookie of [firstCookie, secondCookie]) {
-      const emailStatus = await call(
-        '/api/auth/email-status',
-        'GET',
+      expect(staleCode.status).toBe(401);
+      expect(staleCode.headers['cache-control']).toBe('no-store');
+
+      const beforeRecovery = await signIn(people[0], changedPassword);
+      const freshCodes = await call(
+        '/api/auth/recovery-codes',
+        'POST',
+        { currentPassword: changedPassword },
+        beforeRecovery,
+        process.env.PRUMO_PUBLIC_ORIGIN,
+      );
+      expect(freshCodes.status).toBe(201);
+      const code = (JSON.parse(freshCodes.body) as { codes: string[] })
+        .codes[0];
+      const recoveredPassword = `recovered-${randomUUID()}`;
+      const hostileRecovery = await call(
+        '/api/auth/recover-with-code',
+        'POST',
+        { email: people[0].email, code, newPassword: recoveredPassword },
         undefined,
-        cookie,
+        'https://foreign.test',
       );
-      expect(emailStatus.status).toBe(503);
-      expect(emailStatus.headers['cache-control']).toBe('no-store');
-    }
-    const hostileEmailRequest = await call(
-      '/api/auth/email-verification',
-      'POST',
-      {},
-      firstCookie,
-      'https://foreign.test',
-    );
-    expect(hostileEmailRequest.status).toBe(403);
-    const disabledEmailRequest = await call(
-      '/api/auth/email-verification',
-      'POST',
-      {},
-      firstCookie,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(disabledEmailRequest.status).toBe(503);
-    expect(disabledEmailRequest.headers['cache-control']).toBe('no-store');
-    expect(sharedCache.size).toBe(0);
-    expect(cacheHits).toBe(0);
-    const createdHousehold = await call(
-      '/api/households',
-      'POST',
-      { name: 'Proxy invitation test' },
-      firstCookie,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(createdHousehold.status).toBe(201);
-    invitationHouseholdId = (
-      JSON.parse(createdHousehold.body) as { id: string }
-    ).id;
-    expect(createdHousehold.headers['cache-control']).toBe('no-store');
-    const invited = await call(
-      `/api/households/${invitationHouseholdId}/invitations`,
-      'POST',
-      { inviteeUserId: people[1].id },
-      firstCookie,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(invited.status).toBe(202);
-    expect(invited.headers['cache-control']).toBe('no-store');
-    const invitationId = (JSON.parse(invited.body) as { requestId: string })
-      .requestId;
-    const firstInbox = await call(
-      '/api/auth/invitations',
-      'GET',
-      undefined,
-      firstCookie,
-    );
-    const secondInbox = await call(
-      '/api/auth/invitations',
-      'GET',
-      undefined,
-      secondCookie,
-    );
-    expect(firstInbox.status).toBe(200);
-    expect(JSON.parse(firstInbox.body)).toEqual([]);
-    expect(secondInbox.status).toBe(200);
-    expect(secondInbox.headers['cache-control']).toBe('no-store');
-    expect(JSON.parse(secondInbox.body)).toEqual([
-      expect.objectContaining({
-        id: invitationId,
-        householdId: invitationHouseholdId,
-      }),
-    ]);
-    expect(sharedCache.size).toBe(0);
-    expect(cacheHits).toBe(0);
-    const hostileAccept = await call(
-      `/api/auth/invitations/${invitationId}/accept`,
-      'POST',
-      undefined,
-      secondCookie,
-      'https://foreign.test',
-    );
-    expect(hostileAccept.status).toBe(403);
-    const beforeAccept = await call(
-      `/api/households/${invitationHouseholdId}`,
-      'GET',
-      undefined,
-      secondCookie,
-    );
-    expect(beforeAccept.status).toBe(404);
-    const accepted = await call(
-      `/api/auth/invitations/${invitationId}/accept`,
-      'POST',
-      undefined,
-      secondCookie,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(accepted.status).toBe(204);
-    expect(accepted.headers['cache-control']).toBe('no-store');
-    const afterAccept = await call(
-      `/api/households/${invitationHouseholdId}`,
-      'GET',
-      undefined,
-      secondCookie,
-    );
-    expect(afterAccept.status).toBe(200);
-    const hostile = await call(
-      '/api/auth/sign-out',
-      'POST',
-      undefined,
-      firstCookie,
-      'https://foreign.test',
-    );
-    expect(hostile.status).toBe(403);
-    const signOut = await call(
-      '/api/auth/sign-out',
-      'POST',
-      undefined,
-      firstCookie,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(signOut.status).toBe(204);
-    expect(
-      (await call('/api/auth/me', 'GET', undefined, firstCookie)).status,
-    ).toBe(401);
-    const revokedPage = await call('/conta', 'GET', undefined, firstCookie);
-    expect(revokedPage.status).toBe(200);
-    expect(revokedPage.body).toContain('Você não está conectado.');
-    expect(revokedPage.body).not.toContain(people[0].email);
-    expect(
-      (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
-    ).toBe(200);
-
-    const beforeChange = await signIn(people[0]);
-    const issued = await call(
-      '/api/auth/recovery-codes',
-      'POST',
-      { currentPassword: people[0].password },
-      beforeChange,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(issued.status).toBe(201);
-    expect(issued.headers['cache-control']).toBe('no-store');
-    const previousCode = (JSON.parse(issued.body) as { codes: string[] })
-      .codes[0];
-    const changedPassword = `changed-${randomUUID()}`;
-    const hostileChange = await call(
-      '/api/auth/change-password',
-      'POST',
-      { currentPassword: people[0].password, newPassword: changedPassword },
-      beforeChange,
-      'https://foreign.test',
-    );
-    expect(hostileChange.status).toBe(403);
-    const changed = await call(
-      '/api/auth/change-password',
-      'POST',
-      { currentPassword: people[0].password, newPassword: changedPassword },
-      beforeChange,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(changed.status).toBe(204);
-    expect(changed.headers['cache-control']).toBe('no-store');
-    expect(
-      (await call('/api/auth/me', 'GET', undefined, beforeChange)).status,
-    ).toBe(401);
-    expect(
-      (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
-    ).toBe(200);
-    const staleCode = await call(
-      '/api/auth/recover-with-code',
-      'POST',
-      {
-        email: people[0].email,
-        code: previousCode,
-        newPassword: `unused-${randomUUID()}`,
-      },
-      undefined,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(staleCode.status).toBe(401);
-    expect(staleCode.headers['cache-control']).toBe('no-store');
-
-    const beforeRecovery = await signIn(people[0], changedPassword);
-    const freshCodes = await call(
-      '/api/auth/recovery-codes',
-      'POST',
-      { currentPassword: changedPassword },
-      beforeRecovery,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(freshCodes.status).toBe(201);
-    const code = (JSON.parse(freshCodes.body) as { codes: string[] }).codes[0];
-    const recoveredPassword = `recovered-${randomUUID()}`;
-    const hostileRecovery = await call(
-      '/api/auth/recover-with-code',
-      'POST',
-      { email: people[0].email, code, newPassword: recoveredPassword },
-      undefined,
-      'https://foreign.test',
-    );
-    expect(hostileRecovery.status).toBe(403);
-    const recovered = await call(
-      '/api/auth/recover-with-code',
-      'POST',
-      { email: people[0].email, code, newPassword: recoveredPassword },
-      undefined,
-      process.env.PRUMO_PUBLIC_ORIGIN,
-    );
-    expect(recovered.status).toBe(200);
-    expect(recovered.headers['cache-control']).toBe('no-store');
-    expect(
-      (JSON.parse(recovered.body) as { codes: string[] }).codes,
-    ).toHaveLength(8);
-    expect(
-      (await call('/api/auth/me', 'GET', undefined, beforeRecovery)).status,
-    ).toBe(401);
-    expect(
-      (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
-    ).toBe(200);
-    await signIn(people[0], recoveredPassword);
-    expect(sharedCache.size).toBe(0);
-    expect(cacheHits).toBe(0);
-  } finally {
-    if (proxy)
-      await new Promise<void>((resolveClosed) =>
-        proxy!.close(() => resolveClosed()),
+      expect(hostileRecovery.status).toBe(403);
+      const recovered = await call(
+        '/api/auth/recover-with-code',
+        'POST',
+        { email: people[0].email, code, newPassword: recoveredPassword },
+        undefined,
+        process.env.PRUMO_PUBLIC_ORIGIN,
       );
-    if (next && next.exitCode === null) {
-      next.kill();
-      await Promise.race([once(next, 'exit'), delay(5_000)]);
-    }
-    writeFileSync(tsconfig, tsconfigBefore);
-    if (app) await app.close();
-    if (invitationHouseholdId) {
-      await admin.query(
-        'DELETE FROM household.events WHERE household_id = $1',
-        [invitationHouseholdId],
-      );
-      await admin.query(
-        'DELETE FROM household.invitation_requests WHERE household_id = $1',
-        [invitationHouseholdId],
-      );
-      await admin.query(
-        'DELETE FROM household.invitations WHERE household_id = $1',
-        [invitationHouseholdId],
-      );
-      await admin.query(
-        'DELETE FROM household.memberships WHERE household_id = $1',
-        [invitationHouseholdId],
-      );
-      await admin.query('DELETE FROM household.households WHERE id = $1', [
-        invitationHouseholdId,
-      ]);
-    }
-    for (const person of people) {
-      if (person.id)
-        await admin.query('DELETE FROM identity.users WHERE id = $1', [
-          person.id,
+      expect(recovered.status).toBe(200);
+      expect(recovered.headers['cache-control']).toBe('no-store');
+      expect(
+        (JSON.parse(recovered.body) as { codes: string[] }).codes,
+      ).toHaveLength(8);
+      expect(
+        (await call('/api/auth/me', 'GET', undefined, beforeRecovery)).status,
+      ).toBe(401);
+      expect(
+        (await call('/api/auth/me', 'GET', undefined, secondCookie)).status,
+      ).toBe(200);
+      await signIn(people[0], recoveredPassword);
+      expect(sharedCache.size).toBe(0);
+      expect(cacheHits).toBe(0);
+    } finally {
+      if (proxy)
+        await new Promise<void>((resolveClosed) =>
+          proxy!.close(() => resolveClosed()),
+        );
+      if (next && next.exitCode === null) {
+        next.kill();
+        await Promise.race([once(next, 'exit'), delay(5_000)]);
+      }
+      writeFileSync(tsconfig, tsconfigBefore);
+      if (app) await app.close();
+      for (const householdId of [invitationHouseholdId, secondHouseholdId]) {
+        if (!householdId) continue;
+        await admin.query(
+          'DELETE FROM finance.account_requests WHERE household_id = $1',
+          [householdId],
+        );
+        await admin.query(
+          'DELETE FROM finance.accounts WHERE household_id = $1',
+          [householdId],
+        );
+      }
+      if (invitationHouseholdId) {
+        await admin.query(
+          'DELETE FROM household.events WHERE household_id = $1',
+          [invitationHouseholdId],
+        );
+        await admin.query(
+          'DELETE FROM household.invitation_requests WHERE household_id = $1',
+          [invitationHouseholdId],
+        );
+        await admin.query(
+          'DELETE FROM household.invitations WHERE household_id = $1',
+          [invitationHouseholdId],
+        );
+        await admin.query(
+          'DELETE FROM household.memberships WHERE household_id = $1',
+          [invitationHouseholdId],
+        );
+        await admin.query('DELETE FROM household.households WHERE id = $1', [
+          invitationHouseholdId,
         ]);
+      }
+      if (secondHouseholdId) {
+        await admin.query(
+          'DELETE FROM household.events WHERE household_id = $1',
+          [secondHouseholdId],
+        );
+        await admin.query(
+          'DELETE FROM household.memberships WHERE household_id = $1',
+          [secondHouseholdId],
+        );
+        await admin.query('DELETE FROM household.households WHERE id = $1', [
+          secondHouseholdId,
+        ]);
+      }
+      for (const person of people) {
+        if (person.id)
+          await admin.query('DELETE FROM identity.users WHERE id = $1', [
+            person.id,
+          ]);
+      }
+      await admin.end();
+      if (previousOrigin === undefined) delete process.env.PRUMO_PUBLIC_ORIGIN;
+      else process.env.PRUMO_PUBLIC_ORIGIN = previousOrigin;
+      rmSync(temporary, { recursive: true, force: true });
     }
-    await admin.end();
-    if (previousOrigin === undefined) delete process.env.PRUMO_PUBLIC_ORIGIN;
-    else process.env.PRUMO_PUBLIC_ORIGIN = previousOrigin;
-    rmSync(temporary, { recursive: true, force: true });
-  }
-}, 90_000);
+  },
+  process.env.PRUMO_BROWSER_E2E === '1' ? 150_000 : 90_000,
+);

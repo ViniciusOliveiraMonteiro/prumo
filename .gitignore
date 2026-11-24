@@ -8,6 +8,8 @@
 
 # Dependências locais de projetos Node
 node_modules/
+.pnpm-store/
+.playwright-browsers/
 .bootstrap-drafts/
 .next/
 dist/

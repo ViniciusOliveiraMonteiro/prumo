@@ -44,7 +44,10 @@ jobs:
       - run: pnpm --filter prumo-api build
       - run: pnpm --filter prumo-api db:migrate
       - run: pnpm --filter prumo-api db:prepare-app
+      - run: pnpm --filter prumo-api exec playwright install chromium
       - run: pnpm --filter prumo-api test:e2e
+        env:
+          PRUMO_BROWSER_E2E: "1"
       - run: pnpm --filter prumo-api test:db
       - run: pnpm contract:check
       - run: pnpm build
